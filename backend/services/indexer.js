@@ -3,9 +3,6 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import XLSX from 'xlsx';
 import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
-// import {
-//     loadAndIndexAllPDFs
-// } from './pdfService.js';
 import { PDFService } from './pdfService.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
