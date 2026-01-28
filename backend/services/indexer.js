@@ -359,10 +359,14 @@ class IndexerService {
     async indexDocuments(documents) {
         for (const doc of documents) {
             try {
-                console.log(`🔄 Indexation de ${doc.source}...`);
+                // Assurer que source et sourceFile existent
+                const source = doc.source || `PDF: ${path.basename(doc.sourceFile || 'unknown')}`;
+                const sourceFile = doc.sourceFile || 'unknown';
+                
+                console.log(`🔄 Indexation de ${source}...`);
 
                 const embedding = await openai.embeddings.create({
-                    model: 'text-embedding-ada-002',
+                    model: process.env.EMBEDDING_MODEL , 
                     input: doc.text,
                 });
 
@@ -379,8 +383,8 @@ class IndexerService {
                         date: doc.date,
                         category: doc.category,
                         tags: doc.tags,
-                        source: doc.source,
-                        source_file: doc.sourceFile,
+                        source: source,
+                        source_file: sourceFile,
                     },
                 };
 
@@ -389,9 +393,9 @@ class IndexerService {
                     points: [point],
                 });
 
-                console.log(`✅ ${doc.source} indexé avec succès`);
+                console.log(`✅ ${source} indexé avec succès`);
             } catch (error) {
-                console.error(`❌ Erreur lors de l'indexation de ${doc.source} :`, error?.response?.data || error.message);
+                console.error(`❌ Erreur lors de l'indexation de ${doc.source || doc.title} :`, error?.response?.data || error.message);
             }
         }
     }
