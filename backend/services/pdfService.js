@@ -7,6 +7,7 @@
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 // Import spécifique pour Node.js (version legacy)
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -15,6 +16,9 @@ import chunkingService from './chunking.js';
 const CORPUS_DIR = path.resolve('./corpus');
 const PDF_DIR = path.join(CORPUS_DIR, 'pdf');
 const MAX_CHUNK_TOKENS = 5500; 
+const DEFAULT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
+const STANDARD_FONTS_PATH = path.resolve('node_modules/pdfjs-dist/standard_fonts/') + path.sep;
+const STANDARD_FONTS_URL = pathToFileURL(STANDARD_FONTS_PATH).toString();
 
 export class PDFService {
     constructor() {
@@ -58,7 +62,10 @@ export class PDFService {
                 const uint8Array = new Uint8Array(dataBuffer);
                 
                 // 3. Charger le document PDF
-                const loadingTask = getDocument({ data: uint8Array });
+                const loadingTask = getDocument({
+                    data: uint8Array,
+                    standardFontDataUrl: STANDARD_FONTS_URL,
+                });
                 const pdfDocument = await loadingTask.promise;
 
                 let fullText = '';
@@ -107,7 +114,7 @@ export class PDFService {
 
             return {
                 title: `PDF: ${path.parse(fileName).name}`,
-                author: "saidou",
+                author: DEFAULT_AUTHOR,
                 date: date,
                 category: "PDF",
                 text: text,

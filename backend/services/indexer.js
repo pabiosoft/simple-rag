@@ -9,6 +9,7 @@ const CORPUS_DIR = path.resolve('./corpus');
 const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
+const DEFAULT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
 
 function normalizeValue(value) {
     if (value === undefined || value === null) {
@@ -99,7 +100,7 @@ function buildExcelDocument(row, context) {
     }
 
     const title = pickValue(row, ['title', 'Title'], context.title);
-    const author = pickValue(row, ['author', 'Author'], context.author || 'Anonyme');
+    const author = pickValue(row, ['author', 'Author'], context.author || DEFAULT_AUTHOR);
     const date = pickValue(row, ['date', 'Date'], context.date || 'Non précisée');
     const category = pickValue(row, ['category', 'Category'], context.category || 'Divers');
     const tags = Array.from(new Set([
@@ -248,7 +249,7 @@ class IndexerService {
 
                 documents.push({
                     title: doc.title || 'Inconnu',
-                    author: doc.author || 'Anonyme',
+                    author: doc.author || DEFAULT_AUTHOR,
                     date: doc.date || 'Non précisée',
                     category: doc.category || 'Divers',
                     text: doc.text,
@@ -331,7 +332,7 @@ class IndexerService {
 
                 const context = {
                     title: baseTitle,
-                    author: resolved.author || 'Equipe dashlab',
+                    author: resolved.author || DEFAULT_AUTHOR,
                     date: resolved.date || fileDateIso,
                     category: resolved.category || sheetName,
                     tags: Array.from(new Set([
