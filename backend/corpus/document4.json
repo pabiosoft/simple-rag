@@ -1,7 +1,0 @@
-{
-  "title": "Qu’est-ce que le RAG (Retrieval-Augmented Generation) ?",
-  "author": "isma",
-  "date": "2025-07-10",
-  "category": "IA générative",
-  "text": "Le RAG est une méthode d’intelligence artificielle qui combine deux étapes : la recherche d’informations (retrieval) et la génération de texte (generation). Au lieu de tout demander à un modèle comme ChatGPT, le RAG va d’abord interroger un corpus de documents pour trouver les passages les plus pertinents, puis les utiliser pour construire une réponse sur mesure. Cette approche permet d’obtenir des résultats plus fiables, contextualisés, et à jour par rapport à la simple génération basée sur la mémoire du modèle. Le RAG est idéal pour créer des assistants qui répondent précisément à partir de bases de connaissances internes, comme des docs métiers ou des FAQ d’entreprise."
-}

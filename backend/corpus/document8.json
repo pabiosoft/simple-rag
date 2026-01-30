@@ -1,7 +1,0 @@
-{
-  "title": "Guide d'intégration CSV/Excel pour l'indexation",
-  "author": "Equipe IA",
-  "date": "2025-12-24",
-  "category": "Integration",
-  "text": "Ce document décrit les bonnes pratiques pour importer des fichiers Excel/CSV et préparer les données pour l'indexation et la recherche par RAG. Vérifiez l'encodage (UTF-8), nettoyez les colonnes inutiles et normalisez les en-têtes. Evitez les cellules fusionnées. Pour les dates, utilisez le format ISO 8601 (ex: 2025-12-24). Mappez les colonnes vers des champs documentaires: titre, description, tags, date, auteur. Ajoutez un champ source_file pour traçabilité. Fragment de code pour lire un fichier .xlsx: const xlsx = require('xlsx'); const wb = xlsx.readFile('data.xlsx'); const sheet = wb.Sheets[wb.SheetNames[0]]; const rows = xlsx.utils.sheet_to_json(sheet);"
-}

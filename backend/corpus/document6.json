@@ -1,7 +1,0 @@
-{
-  "title": "RAG vs Agent IA : quelles différences ?",
-  "author": "isma",
-  "date": "2025-07-26",
-  "category": "Concepts IA",
-  "text": "Quand on parle d’IA aujourd’hui, deux mots reviennent souvent : RAG (Retrieval-Augmented Generation) et Agent IA. Mais ce n’est pas la même chose ! Le RAG, c’est une architecture qui permet à un modèle IA d’aller chercher des infos dans une base documentaire pour générer une réponse précise, mais il fonctionne souvent en mode stateless : à chaque question, il recommence de zéro et ne garde pas de mémoire des échanges précédents. Un agent IA, lui, se comporte plutôt comme un assistant intelligent ou un 'bot', capable d’enchaîner plusieurs actions, d’avoir un état (statful), et de gérer une conversation sur la durée. Il peut raisonner, garder le contexte, déclencher des tâches, et même interagir avec d’autres services. En résumé : le RAG booste la qualité des réponses en s’appuyant sur la connaissance, tandis que l’agent IA ajoute la capacité à suivre un fil de discussion, exécuter des workflows, et personnaliser l’expérience utilisateur. Pour un développeur, c’est la différence entre une FAQ intelligente et un véritable collègue virtuel !"
-}

@@ -1,7 +1,0 @@
-{
-  "title": "Qdrant et les bases de données vectorielles, c’est quoi ?",
-  "author": "isma",
-  "date": "2025-07-26",
-  "category": "Base de données",
-  "text": "Qdrant est une base de données dite 'vectorielle', pensée pour l’intelligence artificielle et la recherche de similarité. Au lieu de stocker seulement du texte ou des chiffres comme une base SQL classique, elle garde des vecteurs : des séries de nombres qui résument le sens d’un texte, d’une image ou d’un son. Quand tu veux retrouver un document qui ressemble à ta recherche, Qdrant compare ces vecteurs et te donne les plus proches. C’est ultra rapide, même avec des milliers ou des millions de données. Les bases vectorielles sont devenues essentielles pour tout ce qui touche à l’IA générative, le RAG ou la recherche intelligente, car elles permettent de retrouver instantanément les informations pertinentes, là où une base de données traditionnelle serait perdue."
-}

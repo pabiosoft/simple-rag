@@ -29,3 +29,15 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Corpus (ne versionner que les exemples et dossiers)
+backend/corpus/*
+!backend/corpus/.gitkeep
+!backend/corpus/document.json
+!backend/corpus/excel/
+backend/corpus/excel/*
+!backend/corpus/excel/spec-owner.json
+!backend/corpus/excel/Suivre les abonnement.xlsx
+!backend/corpus/pdf/
+backend/corpus/pdf/*
+!backend/corpus/pdf/.gitkeep

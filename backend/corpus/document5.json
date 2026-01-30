@@ -1,7 +1,0 @@
-{
-  "title": "Comment fonctionne un projet RAG en pratique ?",
-  "author": "isma",
-  "date": "2025-07-12",
-  "category": "Architecture technique",
-  "text": "Dans un projet RAG, on commence par indexer ses documents (PDF, sites web, emails…) pour générer des 'embeddings', c’est-à-dire des représentations numériques des textes. Quand un utilisateur pose une question, le système cherche d’abord dans le corpus les passages les plus proches de la requête. Ensuite, il envoie ces extraits au modèle d’IA (par exemple GPT-4) qui va produire une réponse synthétique basée sur ces données. L’intérêt du RAG, c’est que même si ton modèle n’a jamais vu tes données, il peut répondre de façon pertinente en s’appuyant sur l’existant. C’est la solution clé pour connecter l’IA à la réalité de ton métier !"
-}

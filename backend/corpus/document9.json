@@ -1,7 +1,0 @@
-{
-  "title": "Politique de conservation et anonymisation des données",
-  "author": "DPO",
-  "date": "2025-11-01",
-  "category": "RGPD",
-  "text": "Ce document décrit les règles de conservation minimales et les mécanismes d'anonymisation recommandés pour les données utilisées par les systèmes d'IA. Conserver uniquement les données nécessaires à l'objectif déclaré. Anonymiser ou pseudonymiser les identifiants personnels avant toute indexation. Définir des durées de rétention par catégorie de données (logs: 90 jours, documents: 5 ans). Documenter toute exception et obtention de consentement explicite. Identifier les champs PII, appliquer tokenisation ou hachage salé SHA256(salt + value), vérifier l'absence de ré-identification via tests. Conserver le salt sécurisé séparément et le gérer via un KMS. Si une donnée sensible est découverte après indexation: retirer l'entrée de l'index, réindexer les shards affectés et déclencher un audit."
-}
