@@ -7,10 +7,12 @@ html(lang="fr")
     script(src="https://cdn.tailwindcss.com")
   body
     main(class="min-h-screen bg-slate-950 text-slate-100")
-      .max-w-5xl.mx-auto.px-6.py-10
-        header(class="mb-8")
-          h1(class="text-3xl font-semibold tracking-tight") Admin Upload
-          p(class="text-slate-400 mt-2") Envoyez un fichier PDF, Excel ou JSON dans le corpus.
+      .max-w-5xl.mx-auto.px-6.py-6
+        header(class="mb-6 flex items-center justify-between")
+          div
+            h1(class="text-xl font-semibold tracking-tight") Admin Upload
+            p(class="text-xs text-slate-500") Upload & indexation du corpus
+          a(href="/" class="text-xs text-slate-400 hover:text-slate-200") Chat >
 
         .grid(class="grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6")
           section(class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-6")

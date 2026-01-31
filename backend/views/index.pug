@@ -14,10 +14,12 @@ html(lang="fr")
       .typing-dot { animation: typing 1.4s infinite ease-in-out; }
   body
     main(class="min-h-screen bg-slate-950 text-slate-100")
-      .max-w-5xl.mx-auto.px-6.py-10
-        header(class="mb-8")
-          h1(class="text-3xl font-semibold tracking-tight") Assistant IA - RAG
-          p(class="text-slate-400 mt-2") Recherche intelligente dans vos documents
+      .max-w-5xl.mx-auto.px-6.py-6
+        header(class="mb-6 flex items-center justify-between")
+          div
+            h1(class="text-xl font-semibold tracking-tight") Assistant IA - RAG
+            p(class="text-xs text-slate-500") Recherche intelligente dans vos documents
+          a(href="/admin" class="text-xs text-slate-400 hover:text-slate-200") Admin >
 
         article(class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden")
           #messages(class="max-h-[420px] overflow-y-auto space-y-4 p-6")
