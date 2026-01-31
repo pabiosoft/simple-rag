@@ -15,14 +15,16 @@ const sendText = document.getElementById('sendText');
  */
 function showTypingIndicator() {
     const typingHtml = `
-        <div id="typing-indicator" class="message ai-message">
-            <div class="message-content">
-                <i class="fas fa-robot"></i>
-                <span>IA réfléchit</span>
-                <div class="typing-indicator">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+        <div id="typing-indicator" class="flex flex-col items-start">
+            <div class="max-w-[80%] rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-robot text-slate-400"></i>
+                    <span class="text-slate-300">IA réfléchit</span>
+                    <div class="ml-2 inline-flex items-center gap-1">
+                        <span class="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                        <span class="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-sky-400" style="animation-delay:-0.16s"></span>
+                        <span class="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-sky-400" style="animation-delay:-0.32s"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,10 +66,12 @@ function clearWelcomeMessage() {
  */
 function addUserMessage(message) {
     const userMessageHtml = `
-        <div class="message user-message">
-            <div class="message-content">
-                <i class="fas fa-user"></i>
-                <div class="text">${message}</div>
+        <div class="flex flex-col items-end">
+            <div class="max-w-[80%] rounded-2xl border border-sky-500 bg-sky-500 px-4 py-3 text-sm text-white">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-user"></i>
+                    <div class="leading-relaxed">${message}</div>
+                </div>
             </div>
         </div>
     `;
@@ -80,30 +84,32 @@ function addUserMessage(message) {
  */
 function addAIResponse(data) {
     let html = `
-        <div class="message ai-message">
-            <div class="message-content">
-                <i class="fas fa-robot"></i>
-                <div class="text">${data.answer}</div>
+        <div class="flex flex-col items-start">
+            <div class="max-w-[80%] rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-robot text-slate-400"></i>
+                    <div class="leading-relaxed">${data.answer}</div>
+                </div>
             </div>
     `;
 
     // Ajouter les sources si disponibles
     if (data.sources && data.sources.length > 0) {
         html += `
-            <div class="sources-box">
-                <div class="sources-header">
+            <div class="mt-2 max-w-[80%] rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-300">
+                <div class="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <i class="fas fa-book-open"></i>
                     <span>Sources consultées</span>
                 </div>
-                <ul class="sources-list">
+                <ul class="mt-2 space-y-1">
         `;
         
         data.sources.forEach(source => {
             html += `
-                <li class="source-item">
-                    <i class="fas fa-file-alt"></i>
-                    <span><em>${source.title}</em> — ${source.author}, ${source.date}</span>
-                    <span class="score">${source.score}%</span>
+                <li class="flex items-center gap-2 text-[11px] text-slate-300">
+                    <i class="fas fa-file-alt text-slate-500"></i>
+                    <span class="flex-1"><em>${source.title}</em> — ${source.author}, ${source.date}</span>
+                    <span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-200">${source.score}%</span>
                 </li>
             `;
         });
@@ -111,7 +117,7 @@ function addAIResponse(data) {
         html += `</ul></div>`;
     } else if (data.found === false) {
         html += `
-            <div class="no-sources">
+            <div class="mt-2 max-w-[80%] rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 flex items-center gap-2">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>Aucune source pertinente trouvée</span>
             </div>
@@ -128,10 +134,12 @@ function addAIResponse(data) {
  */
 function addErrorMessage(errorMessage = "Erreur de communication avec le serveur") {
     const errorHtml = `
-        <div class="message error-message">
-            <div class="message-content">
-                <i class="fas fa-exclamation-circle"></i>
-                <span>${errorMessage}</span>
+        <div class="flex flex-col items-start">
+            <div class="max-w-[80%] rounded-2xl border border-rose-700 bg-rose-950 px-4 py-3 text-sm text-rose-200">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>${errorMessage}</span>
+                </div>
             </div>
         </div>
     `;
