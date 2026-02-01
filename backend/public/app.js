@@ -9,6 +9,9 @@ const messages = document.getElementById('messages');
 const sendBtn = document.getElementById('sendBtn');
 const sendIcon = document.getElementById('sendIcon');
 const sendText = document.getElementById('sendText');
+const uploadForm = document.getElementById('corpusUpload');
+const uploadInput = document.getElementById('corpusFile');
+const uploadResponse = document.getElementById('uploadResponse');
 
 /**
  * Affiche l'indicateur de frappe de l'IA
@@ -254,6 +257,10 @@ function initializeApp() {
     input.addEventListener('keydown', handleKeyPress);
     sendBtn.addEventListener('click', sendMessage);
     
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleUploadSubmit);
+    }
+
     // Focus automatique sur l'input
     input.focus();
     
