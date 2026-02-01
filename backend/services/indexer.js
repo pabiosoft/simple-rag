@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import XLSX from 'xlsx';
-import { qdrant, openai, COLLECTION_NAME, DEFAULT_DOCUMENT_AUTHOR } from '../config/database.js';
+import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
 import { PDFService } from './pdfService.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
@@ -10,6 +10,7 @@ const JSON_DIR = path.join(CORPUS_DIR, 'json');
 const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
+const DEFAULT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
 
 function normalizeValue(value) {
     if (value === undefined || value === null) {
@@ -122,7 +123,7 @@ function buildExcelDocument(row, context) {
     }
 
     const title = pickValue(row, ['title', 'Title'], context.title);
-    const author = pickValue(row, ['author', 'Author'], context.author || DEFAULT_DOCUMENT_AUTHOR);
+    const author = pickValue(row, ['author', 'Author'], context.author || DEFAULT_AUTHOR);
     const date = pickValue(row, ['date', 'Date'], context.date || 'Non précisée');
     const category = pickValue(row, ['category', 'Category'], context.category || 'Divers');
     const tags = Array.from(new Set([
@@ -261,8 +262,24 @@ class IndexerService {
             const filePath = path.join(JSON_DIR, file);
 
             try {
-                const document = buildJsonDocumentFromFile(filePath, file);
-                documents.push(document);
+                const rawData = fs.readFileSync(filePath, 'utf-8');
+                const doc = JSON.parse(rawData);
+
+                if (!doc.text || typeof doc.text !== 'string' || !doc.text.trim()) {
+                    console.warn(`⚠️ Skipping ${file} - champ "text" manquant ou vide.`);
+                    continue;
+                }
+
+                documents.push({
+                    title: doc.title || 'Inconnu',
+                    author: doc.author || DEFAULT_AUTHOR,
+                    date: doc.date || 'Non précisée',
+                    category: doc.category || 'Divers',
+                    text: doc.text,
+                    tags: Array.isArray(doc.tags) ? doc.tags : [],
+                    source: file,
+                    sourceFile: file,
+                });
             } catch (error) {
                 console.error(`❌ Erreur de lecture pour ${file}:`, error.message);
             }
@@ -338,7 +355,7 @@ class IndexerService {
 
                 const context = {
                     title: baseTitle,
-                    author: resolved.author || DEFAULT_DOCUMENT_AUTHOR,
+                    author: resolved.author || DEFAULT_AUTHOR,
                     date: resolved.date || fileDateIso,
                     category: resolved.category || sheetName,
                     tags: Array.from(new Set([
@@ -409,10 +426,14 @@ class IndexerService {
     async indexDocuments(documents) {
         for (const doc of documents) {
             try {
-                console.log(`🔄 Indexation de ${doc.source}...`);
+                // Assurer que source et sourceFile existent
+                const source = doc.source || `PDF: ${path.basename(doc.sourceFile || 'unknown')}`;
+                const sourceFile = doc.sourceFile || 'unknown';
+                
+                console.log(`🔄 Indexation de ${source}...`);
 
                 const embedding = await openai.embeddings.create({
-                    model: 'text-embedding-ada-002',
+                    model: process.env.EMBEDDING_MODEL , 
                     input: doc.text,
                 });
 
@@ -429,8 +450,8 @@ class IndexerService {
                         date: doc.date,
                         category: doc.category,
                         tags: doc.tags,
-                        source: doc.source,
-                        source_file: doc.sourceFile,
+                        source: source,
+                        source_file: sourceFile,
                     },
                 };
 
@@ -439,9 +460,9 @@ class IndexerService {
                     points: [point],
                 });
 
-                console.log(`✅ ${doc.source} indexé avec succès`);
+                console.log(`✅ ${source} indexé avec succès`);
             } catch (error) {
-                console.error(`❌ Erreur lors de l'indexation de ${doc.source} :`, error?.response?.data || error.message);
+                console.error(`❌ Erreur lors de l'indexation de ${doc.source || doc.title} :`, error?.response?.data || error.message);
             }
         }
     }

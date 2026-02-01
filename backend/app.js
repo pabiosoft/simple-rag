@@ -75,6 +75,7 @@ app.get('/', (_, res) => {
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
+
 // Démarrage du serveur
 app.listen(PORT, () => {
     console.log(`🧠 App listening on http://localhost:${PORT}`);
