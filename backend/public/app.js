@@ -9,6 +9,9 @@ const messages = document.getElementById('messages');
 const sendBtn = document.getElementById('sendBtn');
 const sendIcon = document.getElementById('sendIcon');
 const sendText = document.getElementById('sendText');
+const uploadForm = document.getElementById('corpusUpload');
+const uploadInput = document.getElementById('corpusFile');
+const uploadResponse = document.getElementById('uploadResponse');
 
 /**
  * Affiche l'indicateur de frappe de l'IA
@@ -246,6 +249,10 @@ function initializeApp() {
     input.addEventListener('keydown', handleKeyPress);
     sendBtn.addEventListener('click', sendMessage);
     
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleUploadSubmit);
+    }
+
     // Focus automatique sur l'input
     input.focus();
     
@@ -254,3 +261,58 @@ function initializeApp() {
 
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+/**
+ * Affiche la réponse JSON de l'upload dans un bloc Swagger-like
+ */
+function showUploadResponse(payload, status = 'info') {
+    if (!uploadResponse) {
+        return;
+    }
+
+    const title = `[${status.toUpperCase()}]`;
+    let body = payload;
+
+    if (typeof payload !== 'string') {
+        try {
+            body = JSON.stringify(payload, null, 2);
+        } catch (error) {
+            body = String(payload);
+        }
+    }
+
+    uploadResponse.textContent = `${title}\n${body}`;
+    uploadResponse.setAttribute('data-status', status);
+}
+
+async function handleUploadSubmit(event) {
+    event.preventDefault();
+
+    if (!uploadInput?.files?.length) {
+        showUploadResponse('Sélectionnez un fichier à envoyer.', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData(uploadForm);
+        showUploadResponse('Envoi en cours...', 'info');
+
+        const response = await fetch('/corpus/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showUploadResponse(data?.error || 'Erreur serveur', 'error');
+            return;
+        }
+
+        showUploadResponse(data, 'success');
+        uploadInput.value = '';
+    } catch (error) {
+        console.error('❌ Upload error:', error);
+        showUploadResponse(error.message || 'Erreur lors de l\'upload', 'error');
+    }
+}

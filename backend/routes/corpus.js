@@ -26,18 +26,32 @@ router.get('/corpus', async (_, res) => {
 
 const upload = multer({
     storage: multer.diskStorage({
-        destination: async (_, __, callback) => {
+        destination: (req, file, callback) => {
+            let destination;
+
             try {
-                await corpusService.ensureExcelDir();
-                callback(null, corpusService.getExcelDir());
+                destination = corpusService.resolveDestination(file.originalname);
+                file.corpusType = destination.type;
             } catch (error) {
-                callback(error);
+                return callback(error);
             }
+
+            corpusService.ensureDirForType(destination.type)
+                .then(() => callback(null, destination.dir))
+                .catch(callback);
         },
         filename: (_, file, callback) => {
             callback(null, file.originalname);
         }
-    })
+    }),
+    fileFilter: (_, file, callback) => {
+        try {
+            corpusService.detectFileType(file.originalname);
+            callback(null, true);
+        } catch (error) {
+            callback(error);
+        }
+    }
 });
 
 /**
@@ -49,22 +63,33 @@ router.post('/corpus/upload', upload.single('file'), async (req, res) => {
     }
 
     try {
-        const summary = await indexerService.indexExcelFile(req.file.filename);
+        await corpusService.ensureReadable(req.file.path);
+        const fileType = req.file.corpusType || corpusService.detectFileType(req.file.originalname);
+        let summary = null;
+
+        if (fileType === 'excel') {
+            summary = await indexerService.indexExcelFile(req.file.filename);
+        } else if (fileType === 'json') {
+            summary = await indexerService.indexJsonFile(req.file.filename);
+        } else if (fileType === 'pdf') {
+            summary = await indexerService.indexPdfFile(req.file.filename);
+        }
 
         res.status(201).json({
-            message: 'Fichier reçu et indexé',
+            message: 'Fichier reçu et traité',
+            type: fileType,
             file: {
                 name: req.file.filename,
-                url: `/corpus/excel/${encodeURIComponent(req.file.filename)}`,
+                url: `/corpus/${fileType}/${encodeURIComponent(req.file.filename)}`,
             },
-            indexed: summary.indexed,
+            indexed: summary?.indexed ?? null,
         });
     } catch (error) {
-        console.error('❌ Erreur lors de l\'indexation ponctuelle:', error.message);
+        console.error('❌ Erreur lors du traitement du fichier:', error.message);
         const status = error.statusCode || 500;
         res.status(status).json({
             error: status >= 500
-                ? 'Erreur serveur: impossible d\'indexer le fichier'
+                ? 'Erreur serveur: impossible de traiter le fichier'
                 : error.message,
         });
     }

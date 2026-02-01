@@ -8,7 +8,8 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "index": "node indexer.js",
-    "watch-pdf": "node scripts/watch-pdf.js"
+    "watch-pdf": "node scripts/watch-pdf.js",
+    "test": "vitest"
   },
   "private": true,
   "dependencies": {
@@ -26,6 +27,16 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "supertest": "^7.2.2",
+    "vitest": "^4.0.16"
+  },
+  "vitest": {
+    "test": {
+      "environment": "node"
+    },
+    "coverage": {
+      "enabled": true
+    }
   }
 }

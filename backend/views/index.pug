@@ -35,5 +35,26 @@ html(lang="fr")
                             i#sendIcon.fas.fa-paper-plane
                             span#sendText Envoyer
 
+            // Upload Panel
+            .upload-panel
+                h2 Ajouter un document au corpus
+                p.description Glissez un JSON, PDF ou Excel : il sera automatiquement classé et indexé. Inspirez-vous d'une expérience Swagger : la réponse brute apparaît juste dessous.
+                form#corpusUpload.form-upload(
+                    action="/corpus/upload"
+                    method="POST"
+                    enctype="multipart/form-data"
+                )
+                    label.form-upload__label(for="corpusFile")
+                        span Fichier à envoyer
+                        small (extensions acceptées : .json, .pdf, .xlsx, .xls)
+                    input#corpusFile(type="file" name="file" required)
+                    button.form-upload__button(type="submit")
+                        i.fas.fa-upload
+                        span Envoyer vers /corpus/upload
+                .upload-response
+                    h3 Résultat de l'API
+                    pre#uploadResponse
+                        code Sélectionnez un fichier puis validez pour voir la réponse JSON.
+
         // Scripts
         script(src="/app.js")

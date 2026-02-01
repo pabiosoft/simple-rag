@@ -6,6 +6,7 @@ import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
 import { PDFService } from './pdfService.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
+const JSON_DIR = path.join(CORPUS_DIR, 'json');
 const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
@@ -63,6 +64,28 @@ function extractTags(row, fallback = []) {
         return normalized.length > 0 ? normalized : fallback;
     }
     return fallback;
+}
+
+function buildJsonDocumentFromFile(filePath, fileName) {
+    const rawData = fs.readFileSync(filePath, 'utf-8');
+    const doc = JSON.parse(rawData);
+
+    if (!doc.text || typeof doc.text !== 'string' || !doc.text.trim()) {
+        const error = new Error(`Champ "text" manquant ou vide dans ${fileName}`);
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return {
+        title: doc.title || 'Inconnu',
+        author: doc.author || DEFAULT_DOCUMENT_AUTHOR,
+        date: doc.date || 'Non précisée',
+        category: doc.category || 'Divers',
+        text: doc.text,
+        tags: Array.isArray(doc.tags) ? doc.tags : [],
+        source: fileName,
+        sourceFile: fileName,
+    };
 }
 
 function buildExcelDocument(row, context) {
@@ -224,11 +247,11 @@ class IndexerService {
     }
 
     async listJsonFiles() {
-        if (!fs.existsSync(CORPUS_DIR)) {
+        if (!fs.existsSync(JSON_DIR)) {
             return [];
         }
 
-        return fs.readdirSync(CORPUS_DIR).filter(file => file.endsWith('.json'));
+        return fs.readdirSync(JSON_DIR).filter(file => file.endsWith('.json'));
     }
 
     async loadJsonDocuments() {
@@ -236,7 +259,7 @@ class IndexerService {
         const documents = [];
 
         for (const file of files) {
-            const filePath = path.join(CORPUS_DIR, file);
+            const filePath = path.join(JSON_DIR, file);
 
             try {
                 const rawData = fs.readFileSync(filePath, 'utf-8');
@@ -355,6 +378,49 @@ class IndexerService {
         });
 
         return documents;
+    }
+
+    async indexJsonFile(fileName) {
+        const filePath = path.join(JSON_DIR, fileName);
+
+        if (!fs.existsSync(filePath)) {
+            const error = new Error('Fichier JSON introuvable dans corpus/json');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const document = buildJsonDocumentFromFile(filePath, fileName);
+
+        await this.ensureCollection({ purge: false });
+        await this.removeDocumentsBySourceFile(fileName);
+        await this.indexDocuments([document]);
+
+        return { indexed: 1 };
+    }
+
+    async indexPdfFile(fileName) {
+        const pdfService = new PDFService();
+
+        try {
+            const document = await pdfService.processSpecificPDF(fileName);
+            const payload = {
+                ...document,
+                tags: Array.isArray(document.tags) ? document.tags : [],
+                source: fileName,
+                sourceFile: fileName,
+            };
+
+            await this.ensureCollection({ purge: false });
+            await this.removeDocumentsBySourceFile(fileName);
+            await this.indexDocuments([payload]);
+
+            return { indexed: 1 };
+        } catch (error) {
+            if (!error.statusCode) {
+                error.statusCode = error.message?.includes('non trouvé') ? 404 : 500;
+            }
+            throw error;
+        }
     }
 
     async indexDocuments(documents) {

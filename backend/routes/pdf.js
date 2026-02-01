@@ -5,6 +5,7 @@
 
 import express from 'express';
 import multer from 'multer';
+import fs from 'fs';
 import { pdfService } from '../services/pdfService.js';
 import { indexerService } from '../services/indexer.js';
 
@@ -44,6 +45,7 @@ router.post('/pdf/upload', upload.single('file'), async (req, res) => {
 
     try {
         console.log(`📄 Fichier PDF reçu: ${req.file.originalname}`);
+        await fs.promises.chmod(req.file.path, 0o644);
 
         // Générer le document à partir du PDF
         const filePath = `${pdfService.getPdfDir()}/${req.file.originalname}`;

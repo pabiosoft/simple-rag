@@ -17,3 +17,4 @@ export const openai = new OpenAI({
 // Constants
 export const COLLECTION_NAME = 'corpus';
 export const VECTOR_SIZE = 1536;
+export const DEFAULT_DOCUMENT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
