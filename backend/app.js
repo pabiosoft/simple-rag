@@ -10,6 +10,7 @@ import { vectorService } from './services/vector.js';
 import chatRoutes from './routes/chat.js';
 import corpusRoutes from './routes/corpus.js';
 import pdfRoutes from './routes/pdf.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -27,11 +28,12 @@ if (!process.env.OPENAI_API_KEY) {
 
 const app = express();
 
-const allowedOrigins = [
-    'http://localhost:3000','http://localhost:8000',
-];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const allowAnyOrigin = allowedOrigins.length === 0;
 
-const dashlabPattern = /^https?:\/\/([a-z0-9-]+\.)*dashlab\.fr(?::\d+)?$/i;
 
 const corsOptions = {
     origin(origin, callback) {
@@ -39,7 +41,11 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        if (allowedOrigins.includes(origin) || dashlabPattern.test(origin)) {
+        if (allowAnyOrigin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
 
@@ -71,10 +77,15 @@ app.get('/', (_, res) => {
     res.render('index');
 });
 
+app.get('/admin', (_, res) => {
+    res.render('admin');
+});
+
 // Routes API
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
+app.use('/', adminRoutes);
 
 // Démarrage du serveur
 app.listen(PORT, () => {

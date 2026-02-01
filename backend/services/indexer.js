@@ -222,6 +222,29 @@ function resolveExcelMetadata(metadata, file, sheet) {
 }
 
 class IndexerService {
+    async collectFilesRecursive(dirPath, filterFn, skipDirs = new Set(['_uploads'])) {
+        if (!fs.existsSync(dirPath)) {
+            return [];
+        }
+
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        const files = [];
+
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                if (skipDirs.has(entry.name)) {
+                    continue;
+                }
+                files.push(...await this.collectFilesRecursive(fullPath, filterFn, skipDirs));
+            } else if (entry.isFile() && filterFn(entry.name)) {
+                files.push(fullPath);
+            }
+        }
+
+        return files;
+    }
+
     async ensureCollection({ purge = false } = {}) {
         try {
             const collection = await qdrant.getCollection(COLLECTION_NAME);
@@ -288,6 +311,45 @@ class IndexerService {
         return documents;
     }
 
+    async loadJsonDocumentsFromDir(dirPath, relativeBase) {
+        if (!fs.existsSync(dirPath)) {
+            return { documents: [], sources: 0 };
+        }
+
+        const files = await this.collectFilesRecursive(dirPath, file => file.endsWith('.json'));
+        const documents = [];
+
+        for (const file of files) {
+            const filePath = file;
+            const relativePath = path.relative(relativeBase, filePath);
+
+            try {
+                const rawData = fs.readFileSync(filePath, 'utf-8');
+                const doc = JSON.parse(rawData);
+
+                if (!doc.text || typeof doc.text !== 'string' || !doc.text.trim()) {
+                    console.warn(`⚠️ Skipping ${relativePath} - champ "text" manquant ou vide.`);
+                    continue;
+                }
+
+                documents.push({
+                    title: doc.title || 'Inconnu',
+                    author: doc.author || DEFAULT_AUTHOR,
+                    date: doc.date || 'Non précisée',
+                    category: doc.category || 'Divers',
+                    text: doc.text,
+                    tags: Array.isArray(doc.tags) ? doc.tags : [],
+                    source: relativePath,
+                    sourceFile: relativePath,
+                });
+            } catch (error) {
+                console.error(`❌ Erreur de lecture pour ${relativePath}:`, error.message);
+            }
+        }
+
+        return { documents, sources: files.length };
+    }
+
     /**
      * Charge et indexe tous les documents PDF
      * @returns {Promise<Array>} Documents générés à partir des PDF
@@ -297,6 +359,15 @@ class IndexerService {
             return await new PDFService().loadAndIndexAllPDFs();
         } catch (error) {
             console.error('❌ Erreur chargement PDF:', error.message);
+            return [];
+        }
+    }
+
+    async loadPDFDocumentsFromSubdir(subdir) {
+        try {
+            return await new PDFService().loadAndIndexAllPDFs({ subdir });
+        } catch (error) {
+            console.error('❌ Erreur chargement PDF (sous-dossier):', error.message);
             return [];
         }
     }
@@ -323,6 +394,10 @@ class IndexerService {
 
     async loadExcelDocumentsFromFile(file, metadata = loadExcelMetadata()) {
         const filePath = path.join(EXCEL_DIR, file);
+        return this.loadExcelDocumentsFromFilePath(filePath, file, metadata);
+    }
+
+    async loadExcelDocumentsFromFilePath(filePath, relativeFile, metadata = loadExcelMetadata()) {
 
         const workbook = XLSX.readFile(filePath, { cellDates: true });
         const fileStat = fs.statSync(filePath);
@@ -347,11 +422,11 @@ class IndexerService {
             }
 
             rows.forEach((row, index) => {
-                const resolved = resolveExcelMetadata(metadata, file, sheetName);
+                const resolved = resolveExcelMetadata(metadata, relativeFile, sheetName);
                 const metaTags = normalizeTagsInput(resolved.tags);
                 const baseTitle = resolved.title
                     ? `${resolved.title} ${index + 1}`
-                    : `${path.parse(file).name} - ${sheetName} ${index + 1}`;
+                    : `${path.parse(relativeFile).name} - ${sheetName} ${index + 1}`;
 
                 const context = {
                     title: baseTitle,
@@ -362,8 +437,8 @@ class IndexerService {
                         sheetName,
                         ...metaTags,
                     ])),
-                    source: `${file}#${sheetName}#${index + 2}`,
-                    sourceFile: file,
+                    source: `${relativeFile}#${sheetName}#${index + 2}`,
+                    sourceFile: relativeFile,
                 };
 
                 const document = buildExcelDocument(row, context);
@@ -380,50 +455,31 @@ class IndexerService {
         return documents;
     }
 
-    async indexJsonFile(fileName) {
-        const filePath = path.join(JSON_DIR, fileName);
-
-        if (!fs.existsSync(filePath)) {
-            const error = new Error('Fichier JSON introuvable dans corpus/json');
-            error.statusCode = 404;
-            throw error;
+    async loadExcelDocumentsFromDir(dirPath) {
+        if (!fs.existsSync(dirPath)) {
+            return { documents: [], sources: 0 };
         }
 
-        const document = buildJsonDocumentFromFile(filePath, fileName);
+        const entries = await this.collectFilesRecursive(
+            dirPath,
+            file => SUPPORTED_EXCEL_EXTENSIONS.has(path.extname(file).toLowerCase())
+        );
 
-        await this.ensureCollection({ purge: false });
-        await this.removeDocumentsBySourceFile(fileName);
-        await this.indexDocuments([document]);
+        const documents = [];
+        const metadata = loadExcelMetadata();
 
-        return { indexed: 1 };
-    }
-
-    async indexPdfFile(fileName) {
-        const pdfService = new PDFService();
-
-        try {
-            const document = await pdfService.processSpecificPDF(fileName);
-            const payload = {
-                ...document,
-                tags: Array.isArray(document.tags) ? document.tags : [],
-                source: fileName,
-                sourceFile: fileName,
-            };
-
-            await this.ensureCollection({ purge: false });
-            await this.removeDocumentsBySourceFile(fileName);
-            await this.indexDocuments([payload]);
-
-            return { indexed: 1 };
-        } catch (error) {
-            if (!error.statusCode) {
-                error.statusCode = error.message?.includes('non trouvé') ? 404 : 500;
-            }
-            throw error;
+        for (const file of entries) {
+            const filePath = file;
+            const relativeFile = path.relative(EXCEL_DIR, filePath);
+            const docsFromFile = await this.loadExcelDocumentsFromFilePath(filePath, relativeFile, metadata);
+            documents.push(...docsFromFile);
         }
+
+        return { documents, sources: entries.length };
     }
 
     async indexDocuments(documents) {
+        let indexed = 0;
         for (const doc of documents) {
             try {
                 // Assurer que source et sourceFile existent
@@ -461,10 +517,12 @@ class IndexerService {
                 });
 
                 console.log(`✅ ${source} indexé avec succès`);
+                indexed += 1;
             } catch (error) {
                 console.error(`❌ Erreur lors de l'indexation de ${doc.source || doc.title} :`, error?.response?.data || error.message);
             }
         }
+        return indexed;
     }
 
     async removeDocumentsBySourceFile(sourceFile) {
@@ -486,10 +544,14 @@ class IndexerService {
 
         console.log('📂 Lecture du corpus (JSON + PDF + Excel)...');
 
+        const pdfDocuments = await new PDFService().loadAndIndexAllPDFsRecursive({ subdir: '' });
+        const { documents: jsonDocuments } = await this.loadJsonDocumentsFromDir(CORPUS_DIR, CORPUS_DIR);
+        const { documents: excelDocuments } = await this.loadExcelDocumentsFromDir(EXCEL_DIR);
+
         const documents = [
-            ...(await this.loadJsonDocuments()),
-            ...(await this.loadPDFDocuments()),
-            ...(await this.loadExcelDocuments()),
+            ...jsonDocuments,
+            ...pdfDocuments,
+            ...excelDocuments,
         ];
 
         if (documents.length === 0) {
@@ -497,9 +559,101 @@ class IndexerService {
             return;
         }
 
-        await this.indexDocuments(documents);
+        const indexed = await this.indexDocuments(documents);
 
         console.log('🏁 Indexation terminée.');
+        return indexed;
+    }
+
+    async indexPdfSubdir(subdir) {
+        await this.ensureCollection({ purge: false });
+
+        console.log(`📂 Indexation PDF ciblée: ${subdir}`);
+        const documents = await this.loadPDFDocumentsFromSubdir(subdir);
+
+        if (documents.length === 0) {
+            console.log('⚠️ Aucun PDF indexable trouvé dans ce sous-dossier.');
+            return;
+        }
+
+        const indexed = await this.indexDocuments(documents);
+
+        console.log('🏁 Indexation ciblée terminée.');
+        return indexed;
+    }
+
+    async indexPdfSubdirRecursive(subdir) {
+        await this.ensureCollection({ purge: false });
+
+        console.log(`📂 Indexation PDF récursive: ${subdir || 'pdf'}`);
+        const documents = await new PDFService().loadAndIndexAllPDFsRecursive({ subdir });
+
+        const pdfFiles = await new PDFService().listPDFFilesRecursive(subdir);
+        const sources = pdfFiles.length;
+
+        if (documents.length === 0) {
+            console.log('⚠️ Aucun PDF indexable trouvé dans ce dossier.');
+            return { indexed: 0, sources };
+        }
+
+        const indexed = await this.indexDocuments(documents);
+        console.log('🏁 Indexation PDF récursive terminée.');
+        return { indexed, sources };
+    }
+
+    async indexExcelSubdir(subdir) {
+        await this.ensureCollection({ purge: false });
+
+        const targetDir = path.join(EXCEL_DIR, subdir || '');
+        console.log(`📂 Indexation Excel ciblée: ${subdir || 'excel'}`);
+
+        const { documents, sources } = await this.loadExcelDocumentsFromDir(targetDir);
+        if (documents.length === 0) {
+            console.log('⚠️ Aucun fichier Excel indexable trouvé dans ce dossier.');
+            return { indexed: 0, sources };
+        }
+
+        const indexed = await this.indexDocuments(documents);
+        console.log('🏁 Indexation Excel terminée.');
+        return { indexed, sources };
+    }
+
+    async indexJsonSubdir(subdir) {
+        await this.ensureCollection({ purge: false });
+
+        const targetDir = path.join(CORPUS_DIR, subdir || '');
+        console.log(`📂 Indexation JSON ciblée: ${subdir || 'corpus'}`);
+
+        const { documents, sources } = await this.loadJsonDocumentsFromDir(targetDir, CORPUS_DIR);
+        if (documents.length === 0) {
+            console.log('⚠️ Aucun fichier JSON indexable trouvé dans ce dossier.');
+            return { indexed: 0, sources };
+        }
+
+        const indexed = await this.indexDocuments(documents);
+        console.log('🏁 Indexation JSON terminée.');
+        return { indexed, sources };
+    }
+
+    async indexCorpusFolder(folderPath) {
+        const normalized = String(folderPath || '').trim().replace(/^\/+|\/+$/g, '');
+
+        if (!normalized) {
+            const indexed = await this.reindexCorpus();
+            return { indexed, sources: null };
+        }
+
+        if (normalized === 'pdf' || normalized.startsWith('pdf/')) {
+            const subdir = normalized === 'pdf' ? '' : normalized.replace(/^pdf\//, '');
+            return this.indexPdfSubdirRecursive(subdir);
+        }
+
+        if (normalized === 'excel' || normalized.startsWith('excel/')) {
+            const subdir = normalized === 'excel' ? '' : normalized.replace(/^excel\//, '');
+            return this.indexExcelSubdir(subdir);
+        }
+
+        return this.indexJsonSubdir(normalized);
     }
 
     async indexExcelFile(fileName) {

@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+WORKDIR /app
+
+# Dev tools
+RUN npm install -g nodemon
+
+COPY package*.json ./
+RUN npm install && npm cache clean --force
+
+COPY . .
+RUN chown -R nodeuser:nodejs /app
+
+USER nodeuser
+
+EXPOSE 8000
+
+CMD ["npm", "run", "dev"]

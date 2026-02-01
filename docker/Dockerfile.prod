@@ -1,0 +1,26 @@
+FROM node:20-alpine AS base
+
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+WORKDIR /app
+
+COPY --from=base /app/node_modules ./node_modules
+COPY . .
+RUN chown -R nodeuser:nodejs /app
+
+USER nodeuser
+
+EXPOSE 8000
+
+CMD ["npm", "run", "start"]

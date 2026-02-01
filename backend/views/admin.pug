@@ -1,0 +1,70 @@
+doctype html
+html(lang="fr")
+  head
+    title Admin - Upload Corpus
+    meta(charset="utf-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1")
+    script(src="https://cdn.tailwindcss.com")
+  body
+    main(class="min-h-screen bg-slate-950 text-slate-100")
+      .max-w-5xl.mx-auto.px-6.py-6
+        header(class="mb-6 flex items-center justify-between")
+          div
+            h1(class="text-xl font-semibold tracking-tight") Admin Upload
+            p(class="text-xs text-slate-500") Upload & indexation du corpus
+          a(href="/" class="text-xs text-slate-400 hover:text-slate-200") Chat >
+
+        .grid(class="grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6")
+          section(class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-6")
+            div
+              h2(class="text-lg font-semibold mb-1") Étape 1 — Ajouter un fichier
+              p(class="text-sm text-slate-400") Uploadez un PDF, Excel ou JSON dans le corpus.
+            form(method="post" action="/corpus/upload/universal" enctype="multipart/form-data" class="space-y-4")
+              .space-y-2
+                label(for="file" class="text-sm font-medium text-slate-300") Fichier
+                input#file(type="file" name="file" required class="block w-full text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-200 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-100")
+
+              .space-y-2
+                label(for="type" class="text-sm font-medium text-slate-300") Type (optionnel)
+                select#type(name="type" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100")
+                  option(value="") Auto-détection
+                  option(value="pdf") PDF
+                  option(value="excel") Excel
+                  option(value="json") JSON
+
+              .space-y-2
+                label(for="subdir" class="text-sm font-medium text-slate-300") Sous-dossier (optionnel)
+                input#subdir(type="text" name="subdir" placeholder="ex: 2026-03-02" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600")
+
+              button(type="submit" class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400")
+                | Upload
+
+            article#uploadStatus(hidden class="mt-4 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm")
+              strong(class="text-slate-300") Statut:
+              span(class="ml-2 text-slate-400") Chargement...
+            div(class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400")
+              p Cette page appelle la route:
+                code(class="ml-2 text-slate-200") /corpus/upload/universal
+              p(class="mt-1") Formats acceptés: PDF, Excel (.xlsx/.xls), JSON. Le sous-dossier est créé automatiquement.
+
+          section(class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-6")
+            div
+              h2(class="text-lg font-semibold mb-1") Étape 2 — Indexer un dossier
+              p(class="text-sm text-slate-400") Choisissez un dossier du corpus puis lancez l’indexation.
+
+              .grid(class="grid-cols-1 gap-4")
+                .rounded-xl.border.border-slate-800.bg-slate-950.p-3.max-h-64.overflow-y-auto
+                  p(class="text-xs uppercase tracking-wide text-slate-500 mb-2") Dossiers du corpus
+                  ul#folderTree(class="space-y-1 text-sm text-slate-200")
+                    li Chargement...
+
+                div(class="space-y-3")
+                  label(for="selectedFolder" class="text-sm font-medium text-slate-300") Dossier sélectionné
+                  input#selectedFolder(type="text" readonly placeholder="ex: 2026-03-02" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100")
+                  button#indexButton(type="button" class="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400") Indexer le dossier sélectionné
+                  button#indexAllButton(type="button" class="w-full rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600") Réindexer tout le corpus
+              div(class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400 mt-4")
+                p L’indexation traite le dossier sélectionné et son contenu direct.
+                p(class="mt-1") Pour tout réindexer (JSON + Excel + PDF), lance la commande complète.
+
+    script(src="/admin.js")

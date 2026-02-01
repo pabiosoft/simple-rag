@@ -36,8 +36,10 @@ backend/corpus/*
 !backend/corpus/document.json
 !backend/corpus/excel/
 backend/corpus/excel/*
-!backend/corpus/excel/spec-owner.json
-!backend/corpus/excel/Suivre les abonnement.xlsx
+!backend/corpus/excel/.gitkeep
+!backend/corpus/json/
+backend/corpus/json/*
+!backend/corpus/json/.gitkeep
 !backend/corpus/pdf/
 backend/corpus/pdf/*
 !backend/corpus/pdf/.gitkeep

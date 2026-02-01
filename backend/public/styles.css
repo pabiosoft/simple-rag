@@ -1,5 +1,4 @@
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 * {
     margin: 0;
@@ -8,43 +7,13 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-.container {
-    width: 100%;
-    max-width: 64rem;
-}
-
-.header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.header h1 {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 0.5rem;
-}
-
-.header p {
-    font-size: 1.125rem;
-    color: rgba(255, 255, 255, 0.8);
+    display: block;
+    padding: 0;
 }
 
 .chat-container {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border-radius: 0.75rem;
     overflow: hidden;
     margin-bottom: 2rem;
 }
@@ -60,25 +29,15 @@ body {
 
 .welcome-message {
     text-align: center;
-    color: #6b7280;
+    color: var(--pico-muted-color);
     padding: 2rem;
 }
 
 .welcome-message i {
-    font-size: 2.5rem;
-    color: #9ca3af;
+    font-size: 2.25rem;
+    color: var(--pico-muted-color);
     margin-bottom: 1rem;
     display: block;
-}
-
-.welcome-message p {
-    font-size: 1.125rem;
-    margin-bottom: 0.5rem;
-}
-
-.welcome-message .subtitle {
-    font-size: 0.875rem;
-    color: #9ca3af;
 }
 
 /* ✅ Structure du message complètement refaite */
@@ -97,16 +56,16 @@ body {
 }
 
 .user-message .message-content {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    max-width: 80%; /* ✅ Largeur limitée */
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    max-width: 80%;
 }
 
 .ai-message .message-content {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    color: #374151;
-    max-width: 80%; /* ✅ Largeur limitée */
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    color: var(--pico-color);
+    max-width: 80%;
 }
 
 .error-message .message-content {
@@ -137,13 +96,13 @@ body {
 
 /* ✅ Sources complètement séparées */
 .sources-box {
-    margin-top: 0.5rem; /* ✅ Petit espace avec le message */
-    max-width: 80%; /* ✅ Même largeur que le message */
+    margin-top: 0.5rem;
+    max-width: 80%;
     padding: 0.75rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border-left: 4px solid #667eea;
+    background: var(--pico-card-sectioning-background-color);
+    border-left: 4px solid var(--pico-primary);
     border-radius: 0.5rem;
-    align-self: flex-start; /* ✅ Aligné à gauche comme l'IA */
+    align-self: flex-start;
 }
 
 .sources-header {
@@ -157,7 +116,7 @@ body {
 }
 
 .sources-header i {
-    color: #3b82f6;
+    color: var(--pico-primary);
 }
 
 .sources-list {
@@ -204,9 +163,9 @@ body {
 }
 
 .input-area {
-    padding: 1.5rem;
-    background: #f9fafb;
-    border-top: 1px solid #e5e7eb;
+    padding: 1.25rem;
+    background: var(--pico-card-sectioning-background-color);
+    border-top: 1px solid var(--pico-muted-border-color);
 }
 
 .upload-panel {
@@ -324,52 +283,68 @@ body {
 }
 
 .input-container {
-    display: flex;
-    background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 9999px;
-    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 0.75rem;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .input-container:focus-within {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--pico-primary);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
-input {
-    flex: 1;
-    padding: 0.75rem 1.5rem;
+textarea {
+    width: 100%;
+    padding: 0.4rem 0.2rem;
     border: none;
     outline: none;
     background: transparent;
-    color: #374151;
+    color: var(--pico-color);
     font-size: 1rem;
+    line-height: 1.3;
+    resize: none;
+    height: 2.8rem;
+    min-height: 2.8rem;
+    margin: 0;
+    box-shadow: none;
 }
 
-input::placeholder {
-    color: #9ca3af;
+textarea::placeholder {
+    color: var(--pico-muted-color);
+}
+
+
+textarea:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 .send-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
     border: none;
-    padding: 0.75rem 1.5rem;
+    padding: 0.6rem 1.25rem;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     font-weight: 500;
-    min-width: 80px;
+    min-width: 96px;
     justify-content: center;
+    height: 2.8rem;
+    border-radius: 0.6rem;
 }
 
 .send-button:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .send-button:disabled {
@@ -387,7 +362,7 @@ input::placeholder {
 .typing-dot {
     width: 6px;
     height: 6px;
-    background: #667eea;
+    background: var(--pico-primary);
     border-radius: 50%;
     animation: typing 1.4s infinite ease-in-out;
 }

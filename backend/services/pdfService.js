@@ -106,7 +106,7 @@ export class PDFService {
      * @param {string} fileName - Nom du fichier original
      * @returns {Promise<Object>} Document structuré
      */
-    async generateDocumentFromPDF(filePath, fileName) {
+    async generateDocumentFromPDF(filePath, fileName, sourceLabel = fileName) {
         try {
             const text = await this.extractTextFromPDF(filePath);
             const now = new Date();
@@ -118,7 +118,9 @@ export class PDFService {
                 date: date,
                 category: "PDF",
                 text: text,
-                isChunked: false
+                isChunked: false,
+                source: sourceLabel,
+                sourceFile: sourceLabel
             };
 
         } catch (error) {
@@ -144,11 +146,11 @@ export class PDFService {
      * @param {string} fileName - Nom du fichier original
      * @returns {Array<Object>} Tableau de documents (1 ou plusieurs chunks)
      */
-    chunkDocumentIfNeeded(document, fileName) {
+    chunkDocumentIfNeeded(document, sourceLabel) {
         const estimatedTokens = chunkingService.estimateTokens(document.text);
         
         // Si le document est sous la limite, pas besoin de chunker
-        if (estimatedTokens <= this.MAX_CHUNK_TOKENS) {
+        if (estimatedTokens <= MAX_CHUNK_TOKENS) {
             console.log(`   └─ Tokens estimés: ${estimatedTokens} (OK)`);
             document.isChunked = false;
             return [document];
@@ -159,7 +161,7 @@ export class PDFService {
         // Utiliser le ChunkingService optimisé pour RAG
         const chunks = chunkingService.chunkByTokens(
             document.text, 
-            this.MAX_CHUNK_TOKENS, 
+            MAX_CHUNK_TOKENS, 
             50 // overlap
         );
         
@@ -169,8 +171,8 @@ export class PDFService {
             date: document.date,
             category: document.category,
             text: chunkText,
-            source: `${fileName}#chunk_${index + 1}`,
-            sourceFile: fileName,
+            source: `${sourceLabel}#chunk_${index + 1}`,
+            sourceFile: sourceLabel,
             isChunked: true,
             chunkIndex: index + 1,
             totalChunks: chunks.length,
@@ -239,11 +241,26 @@ export class PDFService {
      * Liste les fichiers PDF disponibles
      * @returns {Promise<Array>} Liste des fichiers PDF
      */
-    async listPDFFiles() {
+    resolvePdfDir(subdir = '') {
+        const raw = String(subdir || '');
+        const normalized = raw
+            .replace(/^[\\/]+/, '')
+            .replace(/^pdf[\\/]/i, '');
+        console.log(`🧭 resolvePdfDir raw="${raw}" normalized="${normalized}"`);
+        const resolved = path.resolve(PDF_DIR, normalized);
+        const base = path.resolve(PDF_DIR) + path.sep;
+        if (resolved !== path.resolve(PDF_DIR) && !resolved.startsWith(base)) {
+            throw new Error('Chemin PDF invalide');
+        }
+        return resolved;
+    }
+
+    async listPDFFiles(subdir = '') {
         try {
-            if (!fs.existsSync(PDF_DIR)) return [];
-            
-            const files = await fsPromises.readdir(PDF_DIR);
+            const dirPath = this.resolvePdfDir(subdir);
+            if (!fs.existsSync(dirPath)) return [];
+
+            const files = await fsPromises.readdir(dirPath);
             return files
                 .filter(file => file.toLowerCase().endsWith('.pdf'))
                 .sort();
@@ -257,22 +274,74 @@ export class PDFService {
      * Applique automatiquement le chunking si nécessaire
      * @returns {Promise<Array>} Liste des documents générés (potentiellement chunked)
      */
-    async loadAndIndexAllPDFs() {
-        const files = await this.listPDFFiles();
+    async loadAndIndexAllPDFs({ subdir = '' } = {}) {
+        const files = await this.listPDFFiles(subdir);
         const documents = [];
 
         for (const file of files) {
             try {
-                const filePath = path.join(PDF_DIR, file);
-                const document = await this.generateDocumentFromPDF(filePath, file);
+                const dirPath = this.resolvePdfDir(subdir);
+                const filePath = path.join(dirPath, file);
+                const sourceLabel = subdir ? path.join(subdir, file) : file;
+                const document = await this.generateDocumentFromPDF(filePath, file, sourceLabel);
                 
                 // Appliquer le chunking si nécessaire
-                const chunkedDocs = this.chunkDocumentIfNeeded(document, file);
+                const chunkedDocs = this.chunkDocumentIfNeeded(document, sourceLabel);
                 documents.push(...chunkedDocs);
                 
                 console.log(`✅ PDF traité: ${file}${chunkedDocs.length > 1 ? ` (${chunkedDocs.length} chunks)` : ''}`);
             } catch (error) {
                 console.error(`❌ Échec traitement ${file}:`, error.message);
+            }
+        }
+
+        return documents;
+    }
+
+    async listPDFFilesRecursive(subdir = '') {
+        const baseDir = this.resolvePdfDir('');
+        const rootDir = this.resolvePdfDir(subdir);
+        const results = [];
+
+        const walk = async (currentDir) => {
+            const entries = await fsPromises.readdir(currentDir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(currentDir, entry.name);
+                if (entry.isDirectory()) {
+                    await walk(fullPath);
+                } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf')) {
+                    const relativePath = path.relative(baseDir, fullPath);
+                    results.push({ fullPath, relativePath });
+                }
+            }
+        };
+
+        if (!fs.existsSync(rootDir)) {
+            return [];
+        }
+
+        await walk(rootDir);
+        return results;
+    }
+
+    async loadAndIndexAllPDFsRecursive({ subdir = '' } = {}) {
+        const files = await this.listPDFFilesRecursive(subdir);
+        const documents = [];
+
+        for (const file of files) {
+            try {
+                const fileName = path.basename(file.fullPath);
+                const document = await this.generateDocumentFromPDF(
+                    file.fullPath,
+                    fileName,
+                    file.relativePath
+                );
+
+                const chunkedDocs = this.chunkDocumentIfNeeded(document, file.relativePath);
+                documents.push(...chunkedDocs);
+                console.log(`✅ PDF traité: ${file.relativePath}${chunkedDocs.length > 1 ? ` (${chunkedDocs.length} chunks)` : ''}`);
+            } catch (error) {
+                console.error(`❌ Échec traitement ${file.relativePath}:`, error.message);
             }
         }
 
