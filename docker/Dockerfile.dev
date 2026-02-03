@@ -6,7 +6,7 @@ RUN addgroup -g 1001 -S nodejs \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install && npm cache clean --force
+RUN npm install --include=dev && npm cache clean --force
 
 COPY . .
 RUN chown -R nodeuser:nodejs /app
