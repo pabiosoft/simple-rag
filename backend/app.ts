@@ -11,7 +11,8 @@ import chatRoutes from './routes/chat.js';
 import corpusRoutes from './routes/corpus.js';
 import pdfRoutes from './routes/pdf.js';
 import adminRoutes from './routes/admin.js';
-import { apiAuth } from './middleware/auth.js';
+import { apiAuth, isSameOriginRequest } from './middleware/auth.js';
+import { isAdminAuthConfigured, isAdminSessionValid } from './middleware/adminSession.js';
 
 const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
 dotenv.config(envPath ? { path: envPath } : undefined);
@@ -21,6 +22,12 @@ const __dirname = path.dirname(__filename);
 
 // Utiliser le PORT depuis .env avec fallback
 const PORT = process.env.PORT || 8000;
+const adminBase = (() => {
+    const raw = (process.env.ADMIN_PATH || '/admin').trim() || '/admin';
+    const withSlash = raw.startsWith('/') ? raw : `/${raw}`;
+    return withSlash.replace(/\/+$/, '') || '/admin';
+})();
+const enableChatUI = String(process.env.ENABLE_CHAT_UI ?? 'true').toLowerCase() !== 'false';
 
 // Vérification des variables d'environnement
 if (!process.env.OPENAI_API_KEY) {
@@ -76,24 +83,48 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Routes
 app.get('/', (_, res) => {
-    res.render('index');
+    res.render('index', { adminBase, enableChatUI });
 });
 
-app.get('/admin', (_, res) => {
-    res.render('admin');
+app.get(adminBase, (req, res) => {
+    const adminAuthEnabled = isAdminAuthConfigured();
+    res.render('admin', {
+        adminAuthEnabled,
+        adminAuthed: adminAuthEnabled ? isAdminSessionValid(req) : true,
+        adminBase,
+    });
 });
 
 // Routes API
-app.use('/ask', apiAuth);
-app.use('/corpus', apiAuth);
+app.use('/ask', (req, res, next) => {
+    if (isSameOriginRequest(req)) {
+        return next();
+    }
+    return apiAuth(req, res, next);
+});
+app.use('/corpus', (req, res, next) => {
+    if (isAdminAuthConfigured() && isAdminSessionValid(req)) {
+        return next();
+    }
+    return apiAuth(req, res, next);
+});
 app.use('/pdf', apiAuth);
-app.use('/admin', apiAuth);
-app.use('/admin/api', apiAuth);
+app.use(`${adminBase}/api`, (req, res, next) => {
+    if (isAdminAuthConfigured() && isAdminSessionValid(req)) {
+        return next();
+    }
+    return apiAuth(req, res, next);
+});
 
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
-app.use('/', adminRoutes);
+app.use(adminBase, adminRoutes);
+
+// 404
+app.use((req, res) => {
+    res.status(404).render('404', { adminBase });
+});
 
 // Démarrage du serveur
 export default app;

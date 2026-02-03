@@ -35,3 +35,16 @@ export function apiAuth(req: Request, res: Response, next: NextFunction) {
 
   return res.status(401).json({ error: 'Unauthorized' });
 }
+
+export function isSameOriginRequest(req: Request) {
+  const origin = req.header('origin');
+  if (!origin) return false;
+
+  const forwardedProto = (req.header('x-forwarded-proto') || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol;
+  const host = req.header('x-forwarded-host') || req.header('host');
+  if (!host) return false;
+
+  const expectedOrigin = `${proto}://${host}`;
+  return origin === expectedOrigin;
+}

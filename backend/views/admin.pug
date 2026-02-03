@@ -5,7 +5,7 @@ html(lang="fr")
     meta(charset="utf-8")
     meta(name="viewport", content="width=device-width, initial-scale=1")
     script(src="https://cdn.tailwindcss.com")
-  body
+  body(data-admin-auth-enabled=adminAuthEnabled ? 'true' : 'false' data-admin-authed=adminAuthed ? 'true' : 'false' data-admin-base=adminBase)
     main(class="min-h-screen bg-slate-950 text-slate-100")
       .max-w-5xl.mx-auto.px-6.py-6
         header(class="mb-6 flex items-center justify-between")
@@ -66,5 +66,19 @@ html(lang="fr")
               div(class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400 mt-4")
                 p L’indexation traite le dossier sélectionné et son contenu direct.
                 p(class="mt-1") Pour tout réindexer (JSON + Excel + PDF), lance la commande complète.
+
+    #adminAuthModal(class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 p-4")
+      .w-full.max-w-sm.rounded-2xl.border.border-slate-800.bg-slate-900.p-6.shadow-lg
+        h2(class="text-lg font-semibold text-slate-100 mb-2") Accès admin
+        p(class="text-sm text-slate-400 mb-4") Connectez-vous pour accéder à l’interface d’upload.
+        form#adminLoginForm(class="space-y-3")
+          .space-y-1
+            label(for="adminEmail" class="text-xs uppercase tracking-wide text-slate-500") Email
+            input#adminEmail(type="email" required placeholder="admin@example.com" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600")
+          .space-y-1
+            label(for="adminPassword" class="text-xs uppercase tracking-wide text-slate-500") Mot de passe
+            input#adminPassword(type="password" required placeholder="••••••••" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600")
+          p#adminLoginError(class="text-xs text-rose-400")
+          button(type="submit" class="w-full rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400") Se connecter
 
     script(src="/admin.js")
