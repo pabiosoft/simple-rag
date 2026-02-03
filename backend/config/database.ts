@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
+import path from 'path';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import OpenAI from 'openai';
 
-dotenv.config();
+const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
+dotenv.config(envPath ? { path: envPath } : undefined);
 
 // Configuration Qdrant
 export const qdrant = new QdrantClient({ 

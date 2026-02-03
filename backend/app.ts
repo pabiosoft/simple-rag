@@ -12,7 +12,8 @@ import corpusRoutes from './routes/corpus.js';
 import pdfRoutes from './routes/pdf.js';
 import adminRoutes from './routes/admin.js';
 
-dotenv.config();
+const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
+dotenv.config(envPath ? { path: envPath } : undefined);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,6 +89,4 @@ app.use('/', pdfRoutes);
 app.use('/', adminRoutes);
 
 // Démarrage du serveur
-app.listen(PORT, () => {
-    console.log(`🧠 App listening on http://localhost:${PORT}`);
-});
+export default app;
