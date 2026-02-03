@@ -1,5 +1,5 @@
 {
-  "name": "poc-node-et-ia-rag",
+  "name": "simple-rag",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -26,7 +26,7 @@
     "pdfjs-dist": "^5.4.530",
     "pug": "^3.0.3",
     "uuid": "^10.0.0",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
 import { PDFService } from './pdfService.js';
 
@@ -376,34 +376,51 @@ class IndexerService {
 
     async loadExcelDocumentsFromFilePath(filePath, relativeFile, metadata = loadExcelMetadata()) {
 
-        const workbook = XLSX.readFile(filePath, { cellDates: true });
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
         const fileStat = fs.statSync(filePath);
         const fileDateIso = fileStat.mtime.toISOString().split('T')[0];
 
         const documents = [];
 
-        workbook.SheetNames.forEach(sheetName => {
-            const sheet = workbook.Sheets[sheetName];
-            if (!sheet) {
+        workbook.worksheets.forEach(worksheet => {
+            const sheetName = worksheet.name;
+            const headerRow = worksheet.getRow(1);
+            const headers = (headerRow.values || []).slice(1).map(value =>
+                value ? String(value).trim() : ''
+            );
+
+            if (headers.length === 0) {
+                console.log(`⚠️ Feuille "${sheetName}" vide dans ${relativeFile}, ignorée.`);
                 return;
             }
 
-            const rows = XLSX.utils.sheet_to_json(sheet, {
-                defval: '',
-                raw: false,
-            });
+            for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+                const row = worksheet.getRow(rowNumber);
+                const rowObject = {};
 
-            if (rows.length === 0) {
-                console.log(`⚠️ Feuille "${sheetName}" vide dans ${file}, ignorée.`);
-                return;
-            }
+                headers.forEach((header, index) => {
+                    if (!header) return;
+                    const cell = row.getCell(index + 1);
+                    let value = cell.value;
 
-            rows.forEach((row, index) => {
+                    if (value && typeof value === 'object' && 'text' in value) {
+                        value = value.text;
+                    }
+
+                    rowObject[header] = value ?? '';
+                });
+
+                const hasData = Object.values(rowObject).some(value => normalizeValue(value));
+                if (!hasData) {
+                    continue;
+                }
+
                 const resolved = resolveExcelMetadata(metadata, relativeFile, sheetName);
                 const metaTags = normalizeTagsInput(resolved.tags);
                 const baseTitle = resolved.title
-                    ? `${resolved.title} ${index + 1}`
-                    : `${path.parse(relativeFile).name} - ${sheetName} ${index + 1}`;
+                    ? `${resolved.title} ${rowNumber - 1}`
+                    : `${path.parse(relativeFile).name} - ${sheetName} ${rowNumber - 1}`;
 
                 const context = {
                     title: baseTitle,
@@ -414,19 +431,19 @@ class IndexerService {
                         sheetName,
                         ...metaTags,
                     ])),
-                    source: `${relativeFile}#${sheetName}#${index + 2}`,
+                    source: `${relativeFile}#${sheetName}#${rowNumber}`,
                     sourceFile: relativeFile,
                 };
 
-                const document = buildExcelDocument(row, context);
+                const document = buildExcelDocument(rowObject, context);
 
                 if (!document) {
-                    console.log(`⚠️ Ligne ${index + 2} (feuille "${sheetName}" dans ${file}) ignorée : aucune donnée exploitable.`);
-                    return;
+                    console.log(`⚠️ Ligne ${rowNumber} (feuille "${sheetName}" dans ${relativeFile}) ignorée : aucune donnée exploitable.`);
+                    continue;
                 }
 
                 documents.push(document);
-            });
+            }
         });
 
         return documents;
