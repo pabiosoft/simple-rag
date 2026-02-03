@@ -1,5 +1,7 @@
 # Simple RAG
 
+![CI](https://github.com/pabiosoft/simple-rag/actions/workflows/ci.yml/badge.svg)
+
 Un chatbot RAG minimal pour interroger vos documents (PDF / Excel / JSON) avec une UI propre et un mini espace admin.
 
 ## Aperçu
