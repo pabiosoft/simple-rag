@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { Request } from 'express';
+import { secrets } from '../config/appConfig.js';
 
 const SESSION_COOKIE = 'admin_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
@@ -22,12 +23,12 @@ function parseCookieHeader(header = '') {
 }
 
 export function isAdminAuthConfigured() {
-  return Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD);
+  return Boolean(secrets.adminEmail && secrets.adminPassword);
 }
 
 export function verifyAdminCredentials(email = '', password = '') {
-  const requiredEmail = process.env.ADMIN_EMAIL || '';
-  const requiredPassword = process.env.ADMIN_PASSWORD || '';
+  const requiredEmail = secrets.adminEmail;
+  const requiredPassword = secrets.adminPassword;
   if (!requiredEmail || !requiredPassword) return false;
   return safeEqual(email.trim(), requiredEmail) && safeEqual(password, requiredPassword);
 }

@@ -28,7 +28,8 @@
     "pdfjs-dist": "^5.4.530",
     "pug": "^3.0.3",
     "uuid": "^10.0.0",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "yaml": "^2.7.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",

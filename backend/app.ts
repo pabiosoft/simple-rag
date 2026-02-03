@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import { appConfig, secrets } from './config/appConfig.js';
 
 // Services
 import { vectorService } from './services/vector.js';
@@ -14,33 +14,23 @@ import adminRoutes from './routes/admin.js';
 import { apiAuth, isSameOriginRequest } from './middleware/auth.js';
 import { isAdminAuthConfigured, isAdminSessionValid } from './middleware/adminSession.js';
 
-const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
-dotenv.config(envPath ? { path: envPath } : undefined);
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Utiliser le PORT depuis .env avec fallback
-const PORT = process.env.PORT || 8000;
-const adminBase = (() => {
-    const raw = (process.env.ADMIN_PATH || '/admin').trim() || '/admin';
-    const withSlash = raw.startsWith('/') ? raw : `/${raw}`;
-    return withSlash.replace(/\/+$/, '') || '/admin';
-})();
-const enableChatUI = String(process.env.ENABLE_CHAT_UI ?? 'true').toLowerCase() !== 'false';
+const PORT = appConfig.port;
+const adminBase = appConfig.adminPath;
+const enableChatUI = appConfig.enableChatUI;
 
 // Vérification des variables d'environnement
-if (!process.env.OPENAI_API_KEY) {
+if (!secrets.openaiApiKey) {
     console.error('❌ OPENAI_API_KEY non défini dans .env');
     process.exit(1);
 } 
 
 const app = express();
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean);
+const allowedOrigins = appConfig.allowedOrigins || [];
 const allowAnyOrigin = allowedOrigins.length === 0;
 
 

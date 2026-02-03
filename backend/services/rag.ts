@@ -1,17 +1,24 @@
 import { openai } from '../config/database.js';
 import { vectorService } from './vector.js';
+import { appConfig } from '../config/appConfig.js';
 import chunkingService from './chunking.js'; 
 
 /**
  * Service RAG principal - gère le cycle complet de question-réponse
  */
 export class RAGService {
+    MAX_CONTEXT_TOKENS: number;
+    MAX_CHUNKS_TO_RETRIEVE: number;
+    MAX_CHUNK_SIZE_TOKENS: number;
+    defaultWelcomeMessage: string;
+    theme: string;
+
     constructor() {
         this.MAX_CONTEXT_TOKENS = 12000; // Laisser de la marge pour le prompt
         this.MAX_CHUNKS_TO_RETRIEVE = 4; // Réduire le nombre de chunks
         this.MAX_CHUNK_SIZE_TOKENS = 1500; // Réduire la taille max des chunks
         this.defaultWelcomeMessage = "Bonjour ! Comment puis-je vous aider aujourd'hui ? Je suis là comme votre spécialiste, posez-moi une question.";
-        this.theme = (process.env.APP_THEME || '').trim();
+        this.theme = (appConfig.appTheme || '').trim();
     }
 
     /**
@@ -23,7 +30,7 @@ export class RAGService {
         // Gestion des salutations
         if (this.isGreeting(question)) {
             return {
-                answer: (process.env.WELCOME_MESSAGE || this.defaultWelcomeMessage).trim(),
+                answer: (appConfig.welcomeMessage || this.defaultWelcomeMessage).trim(),
                 sources: [],
                 found: true,
                 followups: []
@@ -37,10 +44,12 @@ export class RAGService {
             // 2. Recherche vectorielle avec limites
             const threshold = vectorService.getAdaptiveThreshold(question);
             let searchResults = await vectorService.search(vector, this.MAX_CHUNKS_TO_RETRIEVE, threshold);
+            console.log(`🔎 Score threshold: ${threshold}, résultats: ${searchResults.length}`);
 
             // Fallback : si rien trouvé, relancer avec un seuil plus bas
-            if (searchResults.length === 0 && threshold > 0.7) {
-                searchResults = await vectorService.search(vector, this.MAX_CHUNKS_TO_RETRIEVE, 0.7);
+            if (searchResults.length === 0 && threshold > appConfig.fallbackScore) {
+                searchResults = await vectorService.search(vector, this.MAX_CHUNKS_TO_RETRIEVE, appConfig.fallbackScore);
+                console.log(`🔎 Fallback threshold: ${appConfig.fallbackScore}, résultats: ${searchResults.length}`);
             }
 
             if (searchResults.length === 0) {
@@ -205,7 +214,7 @@ export class RAGService {
      */
     async generateEmbedding(question) {
         const embeddingRes = await openai.embeddings.create({
-            model: process.env.EMBEDDING_MODEL ,
+            model: appConfig.embeddingModel,
             input: question,
         });
         return embeddingRes.data[0].embedding;
@@ -244,7 +253,7 @@ export class RAGService {
 
         try {
             const gptRes = await openai.chat.completions.create({
-                model: 'gpt-3.5-turbo-16k',
+                model: appConfig.chatModel,
                 messages: [
                     { 
                         role: 'system', 
@@ -252,8 +261,8 @@ export class RAGService {
                     },
                     { role: 'user', content: prompt }
                 ],
-                temperature: 0.3,
-                max_tokens: 800 // Limiter la réponse
+                temperature: appConfig.chatTemperature,
+                max_tokens: appConfig.chatMaxTokens // Limiter la réponse
             });
 
             const raw = gptRes.choices[0].message.content?.trim() || '';
@@ -289,10 +298,10 @@ export class RAGService {
         const prompt = `Contexte: ${context}\n\nQuestion: ${question}\n\nRéponse courte:`;
         
         const gptRes = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo', 
+            model: appConfig.chatModelFallback, 
             messages: [{ role: 'user', content: prompt }],
-            temperature: 0.3,
-            max_tokens: 500
+            temperature: appConfig.fallbackTemperature,
+            max_tokens: appConfig.fallbackMaxTokens
         });
 
         const raw = gptRes.choices[0].message.content?.trim() || '';

@@ -1,22 +1,18 @@
-import dotenv from 'dotenv';
-import path from 'path';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import OpenAI from 'openai';
-
-const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
-dotenv.config(envPath ? { path: envPath } : undefined);
+import { appConfig, secrets } from './appConfig.js';
 
 // Configuration Qdrant
 export const qdrant = new QdrantClient({ 
-    url: process.env.QDRANT_URL || 'http://vectordb:6333' 
+    url: appConfig.qdrantUrl,
 });
 
 // Configuration OpenAI
 export const openai = new OpenAI({ 
-    apiKey: process.env.OPENAI_API_KEY 
+    apiKey: secrets.openaiApiKey,
 });
 
 // Constants
-export const COLLECTION_NAME = 'corpus';
-export const VECTOR_SIZE = 1536;
-export const DEFAULT_DOCUMENT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
+export const COLLECTION_NAME = appConfig.collectionName;
+export const VECTOR_SIZE = appConfig.vectorSize;
+export const DEFAULT_DOCUMENT_AUTHOR = appConfig.defaultDocumentAuthor;

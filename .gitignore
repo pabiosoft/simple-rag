@@ -30,6 +30,9 @@ Thumbs.db
 dist/
 build/
 
+# Config overrides (prod)
+backend/config/app.production.yaml
+
 # Corpus (ne versionner que les exemples et dossiers)
 backend/corpus/*
 !backend/corpus/.gitkeep

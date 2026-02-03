@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { secrets } from '../config/appConfig.js';
 
 let warnedOnce = false;
 
@@ -11,7 +12,7 @@ function safeEqual(a: string, b: string) {
 }
 
 export function apiAuth(req: Request, res: Response, next: NextFunction) {
-  const requiredKey = process.env.API_KEY || '';
+  const requiredKey = secrets.apiKey;
 
   if (!requiredKey) {
     if (!warnedOnce) {

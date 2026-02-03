@@ -4,13 +4,14 @@ import { randomUUID } from 'crypto';
 import ExcelJS from 'exceljs';
 import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
 import { PDFService } from './pdfService.js';
+import { appConfig } from '../config/appConfig.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const JSON_DIR = path.join(CORPUS_DIR, 'json');
 const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
-const DEFAULT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
+const DEFAULT_AUTHOR = appConfig.defaultDocumentAuthor;
 
 function normalizeValue(value) {
     if (value === undefined || value === null) {
@@ -78,7 +79,7 @@ function buildJsonDocumentFromFile(filePath, fileName) {
 
     return {
         title: doc.title || 'Inconnu',
-        author: doc.author || DEFAULT_DOCUMENT_AUTHOR,
+        author: doc.author || DEFAULT_AUTHOR,
         date: doc.date || 'Non précisée',
         category: doc.category || 'Divers',
         text: doc.text,
@@ -506,7 +507,7 @@ class IndexerService {
                 console.log(`🔄 Indexation de ${source}...`);
 
                 const embedding = await openai.embeddings.create({
-                    model: process.env.EMBEDDING_MODEL , 
+                    model: appConfig.embeddingModel, 
                     input: doc.text,
                 });
 
