@@ -17,6 +17,12 @@ Auth
 
 1) Ask the chatbot
 POST /ask
+
+Optional stateless context (recommended for multi-app usage):
+- conversation_id: string
+- last_topic: string
+- last_answer: string
+- last_question: string
 Content-Type: application/json
 
 Body:

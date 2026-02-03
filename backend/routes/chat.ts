@@ -8,17 +8,24 @@ const router = express.Router();
  */
 router.post('/ask', async (req, res) => {
     try {
-        const { question } = req.body;
+        const { question, conversation_id, last_topic, last_answer, last_question } = req.body || {};
 
         // Validation
-        if (!question || question.length > 1000) {
+        if (!question || typeof question !== 'string' || question.length > 1000) {
             return res.status(400).json({ 
                 error: 'Question invalide ou trop longue' 
             });
         }
 
+        const context = {
+            conversationId: typeof conversation_id === 'string' ? conversation_id.slice(0, 100) : '',
+            lastTopic: typeof last_topic === 'string' ? last_topic.slice(0, 200) : '',
+            lastAnswer: typeof last_answer === 'string' ? last_answer.slice(0, 2000) : '',
+            lastQuestion: typeof last_question === 'string' ? last_question.slice(0, 500) : '',
+        };
+
         // Traitement avec le service RAG
-        const result = await ragService.processQuestion(question);
+        const result = await ragService.processQuestion(question, context);
         
         res.json(result);
 
