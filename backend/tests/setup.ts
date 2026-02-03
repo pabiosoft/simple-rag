@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 process.env.OPENAI_API_KEY = 'test-key';
 process.env.EMBEDDING_MODEL = 'text-embedding-3-small';
 process.env.DEFAULT_DOCUMENT_AUTHOR = 'test-author';
+process.env.API_KEY = 'test-key';
 
 vi.mock('../config/database.js', () => ({
   qdrant: qdrantMock,

@@ -5,7 +5,9 @@ import { indexerService } from '../../services/indexer.js';
 
 describe('Admin API', () => {
   it('lists folders', async () => {
-    const res = await request(app).get('/admin/api/folders?scope=corpus');
+    const res = await request(app)
+      .get('/admin/api/folders?scope=corpus')
+      .set('x-api-key', 'test-key');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('tree');
   });
@@ -18,6 +20,7 @@ describe('Admin API', () => {
 
     const res = await request(app)
       .post('/admin/api/index')
+      .set('x-api-key', 'test-key')
       .send({ path: 'pdf' });
 
     expect(res.status).toBe(200);

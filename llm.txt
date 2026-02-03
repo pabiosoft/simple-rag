@@ -1,0 +1,75 @@
+# Simple RAG API — quick integration notes
+
+Purpose: connect your app (Nuxt or any frontend) to the RAG API.
+
+Base URL
+- PROD: https://<your-domain>
+- DEV:  http://localhost:8000
+
+CORS
+- Configure ALLOWED_ORIGINS in .env to include your frontend domain.
+
+Auth
+- API key required via header: x-api-key: <API_KEY>
+- Alternative: Authorization: Bearer <API_KEY>
+
+---
+
+1) Ask the chatbot
+POST /ask
+Content-Type: application/json
+
+Body:
+{
+  "question": "Your question here"
+}
+
+Response:
+{
+  "answer": "...",
+  "sources": [
+    { "title": "...", "author": "...", "date": "...", "score": 85 }
+  ],
+  "found": true,
+  "metadata": { "chunksUsed": 2, "totalTokens": 1234 }
+}
+
+Example (fetch):
+fetch('https://<your-domain>/ask', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: '...' })
+})
+
+---
+
+2) Upload document (PDF / Excel / JSON)
+POST /corpus/upload/universal
+Content-Type: multipart/form-data
+
+Fields:
+- file: the file
+- type (optional): pdf | excel | json
+- subdir (optional): folder name (e.g. 2026-03-02)
+
+Example (curl):
+curl -F "file=@./doc.pdf" -F "type=pdf" -F "subdir=2026-03-02" https://<your-domain>/corpus/upload/universal
+
+---
+
+3) Admin indexation (manual)
+GET /admin/api/folders?scope=corpus
+POST /admin/api/index
+
+POST body:
+{ "path": "pdf/2026-03-02" }
+
+Reindex all:
+{ "full": true }
+
+---
+
+Notes
+- PDF files are chunked into multiple fragments.
+- For large uploads, indexation may take a few seconds.
+- Use /admin for a UI: https://<your-domain>/admin

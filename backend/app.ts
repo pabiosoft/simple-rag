@@ -11,6 +11,7 @@ import chatRoutes from './routes/chat.js';
 import corpusRoutes from './routes/corpus.js';
 import pdfRoutes from './routes/pdf.js';
 import adminRoutes from './routes/admin.js';
+import { apiAuth } from './middleware/auth.js';
 
 const envPath = process.env.NODE_ENV === 'test' ? path.resolve('.env.test') : undefined;
 dotenv.config(envPath ? { path: envPath } : undefined);
@@ -83,6 +84,12 @@ app.get('/admin', (_, res) => {
 });
 
 // Routes API
+app.use('/ask', apiAuth);
+app.use('/corpus', apiAuth);
+app.use('/pdf', apiAuth);
+app.use('/admin', apiAuth);
+app.use('/admin/api', apiAuth);
+
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
