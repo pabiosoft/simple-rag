@@ -186,56 +186,6 @@ export class PDFService {
         console.log(`   └─ Document divisé en ${chunks.length} chunks`);
         return chunkDocuments;
     }
-    // chunkDocumentIfNeeded(document, fileName) {
-    //     const estimatedTokens = this.estimateTokens(document.text);
-        
-    //     // Si le document est sous la limite, pas besoin de chunker
-    //     if (estimatedTokens <= MAX_CHUNK_TOKENS) {
-    //         console.log(`   └─ Tokens estimés: ${estimatedTokens} (OK)`);
-    //         return [document];
-    //     }
-
-    //     console.log(`   └─ Tokens estimés: ${estimatedTokens} - Chunking en cours...`);
-        
-    //     // Stratégie : diviser par phrases (plus efficace en mémoire)
-    //     const sentences = document.text.match(/[^.!?]+[.!?]+/g) || [document.text];
-    //     const chunks = [];
-    //     let currentChunk = '';
-    //     let currentTokens = 0;
-        
-    //     for (const sentence of sentences) {
-    //         const sentenceTokens = this.estimateTokens(sentence);
-            
-    //         if (currentTokens + sentenceTokens > MAX_CHUNK_TOKENS && currentChunk.trim()) {
-    //             chunks.push(currentChunk.trim());
-    //             currentChunk = sentence;
-    //             currentTokens = sentenceTokens;
-    //         } else {
-    //             currentChunk += sentence;
-    //             currentTokens += sentenceTokens;
-    //         }
-    //     }
-        
-    //     if (currentChunk.trim()) {
-    //         chunks.push(currentChunk.trim());
-    //     }
-        
-    //     const chunkDocuments = chunks.map((chunkText, index) => ({
-    //         title: `${document.title} [Partie ${index + 1}/${chunks.length}]`,
-    //         author: document.author,
-    //         date: document.date,
-    //         category: document.category,
-    //         text: chunkText,
-    //         source: `${fileName}#chunk_${index + 1}`,
-    //         sourceFile: fileName,
-    //         isChunked: true,
-    //         chunkIndex: index + 1,
-    //         totalChunks: chunks.length
-    //     }));
-
-    //     console.log(`   └─ Document divisé en ${chunks.length} chunks`);
-    //     return chunkDocuments;
-    // }
 
     /**
      * Liste les fichiers PDF disponibles

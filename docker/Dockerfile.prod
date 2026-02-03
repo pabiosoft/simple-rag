@@ -8,6 +8,19 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
+FROM node:20-alpine AS build
+
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci && npm cache clean --force
+
+COPY . .
+RUN npm run build
+
 FROM node:20-alpine
 
 RUN addgroup -g 1001 -S nodejs \
@@ -16,7 +29,13 @@ RUN addgroup -g 1001 -S nodejs \
 WORKDIR /app
 
 COPY --from=base /app/node_modules ./node_modules
-COPY . .
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/package-lock.json ./package-lock.json
+COPY --from=build /app/public ./public
+COPY --from=build /app/views ./views
+COPY --from=build /app/corpus ./corpus
+
 RUN chown -R nodeuser:nodejs /app
 
 USER nodeuser

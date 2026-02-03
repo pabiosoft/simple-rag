@@ -1,15 +1,19 @@
 {
-  "name": "poc-node-et-ia-rag",
+  "name": "simple-rag",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "index": "node indexer.js",
-    "watch-pdf": "node scripts/watch-pdf.js",
-    "test": "vitest"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch server.ts",
+    "index": "node dist/indexer.js",
+    "index:dev": "tsx indexer.ts",
+    "watch-pdf": "node dist/scripts/watch-pdf.js",
+    "watch-pdf:dev": "tsx scripts/watch-pdf.ts",
+    "test": "NODE_ENV=test vitest run",
+    "test:watch": "NODE_ENV=test vitest"
   },
   "private": true,
   "dependencies": {
@@ -24,19 +28,18 @@
     "pdfjs-dist": "^5.4.530",
     "pug": "^3.0.3",
     "uuid": "^10.0.0",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
-    "supertest": "^7.2.2",
-    "vitest": "^4.0.16"
-  },
-  "vitest": {
-    "test": {
-      "environment": "node"
-    },
-    "coverage": {
-      "enabled": true
-    }
+    "@types/body-parser": "^1.19.5",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.1",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "@types/supertest": "^2.0.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "supertest": "^6.3.4",
+    "vitest": "^2.1.9"
   }
 }
