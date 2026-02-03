@@ -12,6 +12,10 @@ const sendText = document.getElementById('sendText');
 const uploadForm = document.getElementById('corpusUpload');
 const uploadInput = document.getElementById('corpusFile');
 const uploadResponse = document.getElementById('uploadResponse');
+let conversationId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+let lastTopic = '';
+let lastAnswer = '';
+let lastQuestion = '';
 
 /**
  * Affiche l'indicateur de frappe de l'IA
@@ -67,6 +71,50 @@ function clearWelcomeMessage() {
  * Ajoute un message utilisateur à l'interface
  * @param {string} message - Le message de l'utilisateur
  */
+function isAckMessage(message) {
+    const text = String(message || '').trim().toLowerCase();
+    if (!text) return true;
+    const ackSet = new Set([
+        'ok', 'okay', 'okey', 'oui', 'va y', 'vas y', 'vas-y', 'go',
+        'daccord', "d'accord", 'continue', 'encore', 'plus',
+        'approfondis', 'developpe', 'développe', 'explique', 'détaille', 'detaille'
+    ]);
+    return text.length <= 20 && ackSet.has(text);
+}
+
+function isGreetingOrSmallTalk(message) {
+    const text = String(message || '').trim().toLowerCase();
+    if (!text) return true;
+    const greetings = new Set(['salut', 'bonjour', 'hello', 'coucou']);
+    const smallTalk = new Set([
+        'ça va', 'ca va', 'comment ça va', 'comment ca va', 'comment vas-tu', 'comment vas tu',
+        'merci', 'merci beaucoup', 'ok merci', 'super'
+    ]);
+    return greetings.has(text) || smallTalk.has(text);
+}
+
+function stripLeadingAck(message) {
+    const raw = String(message || '').trim();
+    if (!raw) return raw;
+    const lower = raw.toLowerCase();
+    const prefixes = ['ok', 'okay', 'okey', 'oui', 'daccord', "d'accord", 'vas y', 'va y', 'vas-y'];
+    for (const prefix of prefixes) {
+        if (lower === prefix) return raw;
+        if (lower.startsWith(`${prefix} `)) {
+            return raw.slice(prefix.length).trim();
+        }
+    }
+    return raw;
+}
+
+function isMathLikeMessage(message) {
+    const text = String(message || '').toLowerCase();
+    if (!text) return false;
+    if (text.includes('+') || text.includes('-') || text.includes('*') || text.includes('/')) {
+        return /\d/.test(text);
+    }
+    return false;
+}
 function addUserMessage(message) {
     const userMessageHtml = `
         <div class="flex flex-col items-end">
@@ -175,7 +223,13 @@ async function sendMessageToAPI(message) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ question: message })
+            body: JSON.stringify({
+                question: message,
+                conversation_id: conversationId,
+                last_topic: lastTopic,
+                last_answer: lastAnswer,
+                last_question: lastQuestion
+            })
         });
 
         if (!response.ok) {
@@ -223,6 +277,11 @@ async function sendMessage() {
         
         // Ajouter la réponse IA
         addAIResponse(data);
+        if (!isAckMessage(message) && !isGreetingOrSmallTalk(message) && !isMathLikeMessage(message)) {
+            lastQuestion = stripLeadingAck(message);
+        }
+        lastAnswer = data?.context?.last_answer || data?.answer || '';
+        lastTopic = data?.context?.last_topic || '';
         
     } catch (error) {
         // Supprimer l'indicateur de frappe et afficher l'erreur

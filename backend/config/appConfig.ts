@@ -27,6 +27,9 @@ type AppConfig = {
   chatMaxTokens: number;
   fallbackTemperature: number;
   fallbackMaxTokens: number;
+  suggestedTopics: string[];
+  otherTopicAllowed: string[];
+  offTopicRedirectLine: string;
   qdrantUrl: string;
   collectionName: string;
   vectorSize: number;
@@ -50,6 +53,9 @@ type RawConfig = Partial<{
   chatMaxTokens: number;
   fallbackTemperature: number;
   fallbackMaxTokens: number;
+  suggestedTopics: string[];
+  otherTopicAllowed: string[];
+  offTopicRedirectLine: string;
   qdrantUrl: string;
   collectionName: string;
   vectorSize: number;
@@ -116,6 +122,19 @@ const appConfig: AppConfig = {
   chatMaxTokens: Number(process.env.CHAT_MAX_TOKENS || rawConfig.chatMaxTokens || 800),
   fallbackTemperature: Number(process.env.FALLBACK_TEMPERATURE || rawConfig.fallbackTemperature || 0.3),
   fallbackMaxTokens: Number(process.env.FALLBACK_MAX_TOKENS || rawConfig.fallbackMaxTokens || 500),
+  suggestedTopics: (process.env.SUGGESTED_TOPICS || '')
+    .split(',')
+    .map(topic => topic.trim())
+    .filter(Boolean)
+    .concat(rawConfig.suggestedTopics || [])
+    .filter((topic, index, list) => list.indexOf(topic) === index),
+  otherTopicAllowed: (process.env.OTHER_TOPIC_ALLOWED || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .concat(rawConfig.otherTopicAllowed || [])
+    .filter((item, index, list) => list.indexOf(item) === index),
+  offTopicRedirectLine: process.env.OFF_TOPIC_REDIRECT_LINE || rawConfig.offTopicRedirectLine || '',
   qdrantUrl: process.env.QDRANT_URL || rawConfig.qdrantUrl || 'http://vectordb:6333',
   collectionName: process.env.COLLECTION_NAME || rawConfig.collectionName || 'corpus',
   vectorSize: Number(process.env.VECTOR_SIZE || rawConfig.vectorSize || 1536),

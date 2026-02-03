@@ -13,6 +13,16 @@ chatTemperature: 0.3
 chatMaxTokens: 800
 fallbackTemperature: 0.3
 fallbackMaxTokens: 500
+suggestedTopics:
+  - objectifs et portée
+  - permis et autorisations
+  - responsabilités des acteurs
+  - normes techniques et sécurité
+  - financement et aides
+otherTopicAllowed:
+  - math
+  - smalltalk
+offTopicRedirectLine: ""
 qdrantUrl: http://vectordb:6333
 collectionName: corpus
 vectorSize: 1536

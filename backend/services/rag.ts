@@ -6,19 +6,34 @@ import chunkingService from './chunking.js';
 /**
  * Service RAG principal - gère le cycle complet de question-réponse
  */
+type ConversationContext = {
+    conversationId?: string;
+    lastTopic?: string;
+    lastAnswer?: string;
+    lastQuestion?: string;
+};
+
+type RewriteResult = {
+    text: string;
+    baseQuestion?: string;
+    focus?: string;
+};
+
 export class RAGService {
     MAX_CONTEXT_TOKENS: number;
     MAX_CHUNKS_TO_RETRIEVE: number;
     MAX_CHUNK_SIZE_TOKENS: number;
     defaultWelcomeMessage: string;
     theme: string;
+    lastTopicHints: string[];
 
     constructor() {
         this.MAX_CONTEXT_TOKENS = 12000; // Laisser de la marge pour le prompt
         this.MAX_CHUNKS_TO_RETRIEVE = 4; // Réduire le nombre de chunks
         this.MAX_CHUNK_SIZE_TOKENS = 1500; // Réduire la taille max des chunks
-        this.defaultWelcomeMessage = "Bonjour ! Comment puis-je vous aider aujourd'hui ? Je suis là comme votre spécialiste, posez-moi une question.";
+        this.defaultWelcomeMessage = "Bonjour ! Je suis votre assistant spécialisé. Posez-moi une question pour démarrer.";
         this.theme = (appConfig.appTheme || '').trim();
+        this.lastTopicHints = (appConfig.suggestedTopics || []).filter(Boolean);
     }
 
     /**
@@ -26,20 +41,97 @@ export class RAGService {
      * @param {string} question - Question de l'utilisateur
      * @returns {Promise<Object>} Réponse avec answer, sources et found
      */
-    async processQuestion(question) {
+    async processQuestion(question, context: ConversationContext = {}) {
+        const normalizedQuestion = this.stripLeadingAck(question);
+        const rewritten = this.rewriteIfAck(normalizedQuestion, context);
+        let refinedQuestion = rewritten.text || question;
+        if (rewritten.focus) {
+            refinedQuestion = `${refinedQuestion}\nFocalise uniquement sur: ${rewritten.focus}. Évite un résumé général.`;
+        }
         // Gestion des salutations
-        if (this.isGreeting(question)) {
+        if (this.isGreeting(refinedQuestion)) {
             return {
-                answer: (appConfig.welcomeMessage || this.defaultWelcomeMessage).trim(),
+                answer: this.buildWelcomeMessage(),
                 sources: [],
                 found: true,
-                followups: []
+                followups: [],
+                context: {
+                    last_topic: context?.lastTopic || '',
+                    last_answer: '',
+                    last_question: refinedQuestion
+                }
+            };
+        }
+
+        if (this.isSmallTalk(refinedQuestion)) {
+            if (!this.isOtherTopicAllowed('smalltalk')) {
+                return {
+                    answer: this.buildGuidanceAnswer('no_results', context),
+                    sources: [],
+                    found: false,
+                    followups: [],
+                    context: {
+                        last_topic: context?.lastTopic || '',
+                        last_answer: '',
+                        last_question: refinedQuestion
+                    }
+                };
+            }
+            return this.generateOffTopicAnswer(refinedQuestion, context);
+        }
+
+        if (this.isDistanceQuestion(refinedQuestion)) {
+            if (!this.isOtherTopicAllowed('distance')) {
+                return {
+                    answer: this.buildGuidanceAnswer('no_results', context),
+                    sources: [],
+                    found: false,
+                    followups: [],
+                    context: {
+                        last_topic: context?.lastTopic || '',
+                        last_answer: '',
+                        last_question: refinedQuestion
+                    }
+                };
+            }
+            return this.generateOffTopicAnswer(refinedQuestion, context);
+        }
+
+        const mathResult = this.trySolveMath(refinedQuestion);
+        if (mathResult !== null) {
+            if (!this.isOtherTopicAllowed('math')) {
+                return {
+                    answer: this.buildGuidanceAnswer('no_results', context),
+                    sources: [],
+                    found: false,
+                    followups: [],
+                    context: {
+                        last_topic: context?.lastTopic || '',
+                        last_answer: '',
+                        last_question: refinedQuestion
+                    }
+                };
+            }
+            return this.generateOffTopicAnswer(refinedQuestion, context);
+        }
+
+        if (this.isVagueQuestion(refinedQuestion)) {
+            return {
+                answer: this.buildGuidanceAnswer('vague', context),
+                sources: [],
+                found: false,
+                followups: [],
+                context: {
+                    last_topic: context?.lastTopic || '',
+                    last_answer: '',
+                    last_question: refinedQuestion
+                }
             };
         }
 
         try {
             // 1. Génération de l'embedding
-            const vector = await this.generateEmbedding(question);
+            const vector = await this.generateEmbedding(refinedQuestion);
 
             // 2. Recherche vectorielle avec limites
             const threshold = vectorService.getAdaptiveThreshold(question);
@@ -54,13 +146,15 @@ export class RAGService {
 
             if (searchResults.length === 0) {
                 return {
-                    answer: "Désolé, je n'ai pas d'informations sur ce sujet dans ma base de connaissances.",
+                    answer: this.buildGuidanceAnswer('no_results', context),
                     sources: [],
                     found: false,
-                    followups: [
-                        "Peux-tu préciser le sujet ou le contexte ?",
-                        "As-tu un document ou un titre précis à rechercher ?"
-                    ]
+                    followups: [],
+                    context: {
+                        last_topic: context?.lastTopic || '',
+                        last_answer: '',
+                        last_question: refinedQuestion
+                    }
                 };
             }
 
@@ -80,21 +174,21 @@ export class RAGService {
             }
 
             // 4. Préparation du contexte avec taille contrôlée
-            const context = this.buildContext(filteredResults);
+            const contextText = this.buildContext(filteredResults);
             
             // 5. Vérifier la taille du contexte avant d'envoyer
-            const totalTokens = this.estimateTokens(context + question);
+            const totalTokens = this.estimateTokens(contextText + refinedQuestion);
             console.log(`📊 Tokens estimés: ${totalTokens} (limite: ${this.MAX_CONTEXT_TOKENS})`);
             
             if (totalTokens > 14000) {
                 console.warn('⚠️  Contexte trop long, réduction...');
                 // Réduire encore plus si contexte trop long
                 const furtherFiltered = filteredResults.slice(0, Math.max(1, filteredResults.length - 1));
-                return this.processQuestionWithContext(question, furtherFiltered);
+                return this.processQuestionWithContext(refinedQuestion, furtherFiltered);
             }
 
             // 6. Génération de la réponse avec modèle adapté
-            const { answer, followups } = await this.generateAnswer(question, context);
+            const { answer, followups } = await this.generateAnswer(refinedQuestion, contextText);
 
             // 7. Formatage des sources
             const sources = this.formatSources(filteredResults);
@@ -107,6 +201,11 @@ export class RAGService {
                 metadata: {
                     chunksUsed: filteredResults.length,
                     totalTokens: totalTokens
+                },
+                context: {
+                    last_topic: sources?.[0]?.title || context?.lastTopic || '',
+                    last_answer: answer,
+                    last_question: rewritten?.baseQuestion || refinedQuestion
                 }
             };
 
@@ -120,6 +219,145 @@ export class RAGService {
             
             throw error;
         }
+    }
+
+    pickDeepenHint(context: ConversationContext = {}) {
+        if (context?.lastTopic) return context.lastTopic;
+        if (context?.lastQuestion && context.lastQuestion.length > 6) return context.lastQuestion;
+        if (this.lastTopicHints.length > 0) return this.lastTopicHints[0];
+        return '';
+    }
+
+    rewriteIfAck(question, context: ConversationContext = {}): RewriteResult {
+        const text = String(question || '').trim();
+        if (!text) return { text };
+
+        const normalized = text.toLowerCase();
+        const ackSet = new Set([
+            'oui', 'ok', 'okay', 'okey', 'daccord', "d'accord", 'va y', 'vas y', 'vas-y', 'continue',
+            'oui vas y', 'oui vas-y', 'go', 'encore', 'plus', 'approfondis',
+            'développe', 'developpe', 'explique', 'détaille', 'detaille'
+        ]);
+
+        if (text.length <= 20 && ackSet.has(normalized)) {
+            const baseQuestion = context?.lastQuestion || context?.lastTopic || '';
+            const hint = this.pickDeepenHint(context);
+            if (hint) {
+                return {
+                    text: `Explique en détail : ${hint}`,
+                    baseQuestion,
+                    focus: hint
+                };
+            }
+            if (context?.lastAnswer) {
+                return {
+                    text: `Explique en détail ce que tu viens d'expliquer.`,
+                    baseQuestion,
+                    focus: ''
+                };
+            }
+        }
+
+        return { text: question };
+    }
+
+    isVagueQuestion(question) {
+        const text = String(question || '').trim().toLowerCase();
+        if (!text) return true;
+        if (text.length <= 3) return true;
+
+        const exactVague = new Set([
+            'tu peux me parler de quoi',
+            'tu peux parler de quoi',
+            'de quoi peux-tu parler',
+            'tu sais quoi',
+            'dis-moi quelque chose',
+            'parle moi de quoi',
+            'parle moi de',
+            'parle de',
+            'tu connais',
+            'tu sais',
+            'c est quoi',
+            "c'est quoi"
+        ]);
+
+        return exactVague.has(text);
+    }
+
+    buildGuidanceAnswer(reason = 'general', context: ConversationContext = {}) {
+        const theme = this.theme || appConfig.appTheme;
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean);
+        const topicLine = topics.length > 0
+            ? `Je peux t’aider sur : ${topics.slice(0, 5).join(', ')}.`
+            : 'Je peux t’aider sur un résumé, une définition, une obligation, ou une procédure précise.';
+
+        const focusLine = theme
+            ? `Je suis spécialisé sur ${theme} d’après les documents disponibles.`
+            : 'Je réponds uniquement à partir des documents disponibles.';
+
+        const lastTopic = context?.lastQuestion
+            ? `Si tu veux, je peux détailler ${this.cleanTopic(context.lastQuestion)}.`
+            : context?.lastTopic
+                ? `Si tu veux, je peux t’en dire plus sur ${context.lastTopic}.`
+                : '';
+        const prefix = reason === 'vague'
+            ? 'Pour t’aider à démarrer, voici des pistes simples.'
+            : 'Je n’ai pas trouvé ce point précis dans les documents, mais je peux aider sur ces sujets.';
+
+        return `${focusLine} ${prefix} ${topicLine} ${lastTopic}`.trim();
+    }
+
+    buildWelcomeMessage() {
+        const theme = this.theme || appConfig.appTheme;
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean);
+        const focusLine = appConfig.welcomeMessage?.trim()
+            ? appConfig.welcomeMessage.trim()
+            : (theme
+                ? `Bonjour ! Je suis votre assistant spécialisé en ${theme}.`
+                : 'Bonjour ! Je suis votre assistant spécialisé.');
+        const topicLine = topics.length > 0
+            ? `${topics.slice(0, 4).join(', ')}.`
+            : '';
+        const fallbackLine = topics.length === 0
+            ? 'Je peux t’aider avec un résumé, une définition, une obligation ou une procédure précise.'
+            : '';
+        const base = [focusLine, topicLine].filter(Boolean).join(' ').trim();
+        return `${base} ${fallbackLine} Dis-moi ce que tu veux savoir aujourd’hui et je t’explique simplement.`.trim();
+    }
+
+    cleanTopic(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return 'ce point';
+        const lower = raw.toLowerCase();
+        const badPrefixes = [
+            'parle', 'parle moi', 'parle-moi', 'explique', 'explique moi', 'explique-moi',
+            'dis moi', 'dis-moi', 'de quoi', 'tu peux', 'peux-tu', 'pouvez-vous',
+            'tu connais', 'tu sais'
+        ];
+        const greetings = ['salut', 'bonjour', 'hello', 'coucou', 'ça va', 'ca va', 'merci'];
+        if (greetings.includes(lower)) {
+            return 'ce point';
+        }
+        if (badPrefixes.some(prefix => lower.startsWith(prefix))) {
+            return 'ce point';
+        }
+        return raw;
+    }
+
+    stripLeadingAck(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return raw;
+        const lower = raw.toLowerCase();
+        const prefixes = [
+            'ok', 'okay', 'okey', 'oui', 'daccord', "d'accord", 'vas y', 'va y', 'vas-y'
+        ];
+        for (const prefix of prefixes) {
+            if (lower === prefix) return raw;
+            if (lower.startsWith(`${prefix} `)) {
+                return raw.slice(prefix.length).trim();
+            }
+        }
+        return raw;
     }
 
     /**
@@ -229,7 +467,7 @@ export class RAGService {
     async generateAnswer(question, context) {
         // PROMPT OPTIMISÉ - plus court
         const themeLine = this.theme ? `\n        THÉMATIQUE : ${this.theme}` : '';
-        const prompt = `Tu es DashLab, un assistant analytique expert.${themeLine}
+        const prompt = `Tu es un assistant clair, pédagogique et rigoureux.${themeLine}
 
         CONTEXTE (extraits de documents) :
         ${context}
@@ -237,16 +475,16 @@ export class RAGService {
         QUESTION : "${question}"
 
         INSTRUCTIONS :
-        1. Réponds UNIQUEMENT à partir du contexte ci-dessus.
-        2. Explique comme si l'utilisateur ne connaît rien au sujet.
-        3. Si l'information manque, dis-le simplement.
-        4. Donne une réponse structurée et développée (minimum 6-8 phrases si le contexte le permet).
-        5. Propose 2 à 3 questions de suivi pertinentes pour continuer la conversation.
-        5.1 Ne mentionne pas "document", "documents", "sources", "corpus" ou "dossier" dans les questions.
-        5.2 Si une THÉMATIQUE est fournie, aligne les questions de suivi sur cette thématique.
-        5.3 Ton des questions de suivi : bienveillant, orienté aide, commence par "Si tu veux," ou "Dis-moi".
-        5.4 Les questions de suivi doivent être formulées comme des propositions d'aide (pas de point d'interrogation).
-        6. Réponds en JSON strict avec ce format :
+        1. Réponds UNIQUEMENT avec les informations présentes dans le CONTEXTE.
+        2. Explique simplement, comme à une personne qui découvre le sujet.
+        3. Si le CONTEXTE ne suffit pas, dis-le clairement en une phrase (sans inventer).
+        4. Donne une réponse structurée, claire et utile (4 à 8 phrases selon la matière disponible).
+        5. N'ajoute aucune question dans la réponse (pas de phrase interrogative).
+        6. Propose 2 à 3 relances sous forme de propositions d'aide (pas de point d'interrogation).
+        6.1 Ne mentionne pas "document", "documents", "sources", "corpus" ou "dossier".
+        6.2 Si une THÉMATIQUE est fournie, aligne les relances sur cette thématique.
+        6.3 Ton des relances : bienveillant, orienté aide, commence par "Si tu veux," ou "Dis-moi".
+        7. Réponds en JSON strict avec ce format :
            {"answer":"...","followups":["...","..."]}
 
         RÉPONSE :`;
@@ -257,7 +495,7 @@ export class RAGService {
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'Tu réponds concisement en utilisant uniquement le contexte fourni.' 
+                        content: 'Tu donnes des réponses claires, simples et exactes, uniquement à partir du contexte fourni.' 
                     },
                     { role: 'user', content: prompt }
                 ],
@@ -327,6 +565,125 @@ export class RAGService {
     isGreeting(question) {
         const greetings = ['salut', 'bonjour', 'hello', 'coucou'];
         return greetings.includes(question.toLowerCase().trim());
+    }
+
+    isSmallTalk(question) {
+        const text = String(question || '').trim().toLowerCase();
+        if (!text) return false;
+        const exact = new Set([
+            'ça va', 'ca va', 'comment ça va', 'comment ca va', 'comment vas-tu', 'comment vas tu',
+            'merci', 'merci beaucoup', 'ok merci', 'ok', 'daccord', "d'accord", 'super'
+        ]);
+        return exact.has(text);
+    }
+
+    getSmallTalkResponse() {
+        return "Ça va bien, merci ! Si tu veux, je peux répondre à une question précise sur le sujet.";
+    }
+
+    isDistanceQuestion(question) {
+        const text = String(question || '').trim().toLowerCase();
+        if (!text) return false;
+        if (text.includes('distance entre')) return true;
+        if (text.includes('distance de') && text.includes('à')) return true;
+        if (text.includes('combien de km')) return true;
+        return false;
+    }
+
+    isOtherTopicAllowed(kind) {
+        const allowed = (appConfig.otherTopicAllowed || []).map(item => item.toLowerCase());
+        return allowed.includes(kind.toLowerCase());
+    }
+
+    buildOffTopicRedirect() {
+        const theme = this.theme || appConfig.appTheme;
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean).slice(0, 4);
+        const hint = topics.length > 0
+            ? `Si tu veux, je peux plutôt t’aider sur ${topics.join(', ')}.`
+            : 'Si tu veux, pose-moi une question en lien avec mes documents.';
+        const humorLine = appConfig.offTopicRedirectLine?.trim()
+            ? appConfig.offTopicRedirectLine.trim()
+            : (theme
+                ? `Je ne pourrai pas tenir longtemps sur ce sujet, par contre je suis à l’aise sur ${theme}.`
+                : `Je ne pourrai pas tenir longtemps sur ce sujet, mais je peux aider sur les sujets du corpus.`);
+        return `${humorLine} ${hint}`.trim();
+    }
+
+    async generateOffTopicAnswer(question, context: ConversationContext = {}) {
+        const prompt = `Réponds poliment et brièvement à la question suivante (1-2 phrases), puis ajoute une phrase d’orientation vers le domaine principal.
+
+QUESTION : "${question}"
+
+RÉPONSE :`;
+
+        try {
+            const gptRes = await openai.chat.completions.create({
+                model: appConfig.chatModelFallback,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.3,
+                max_tokens: 120
+            });
+
+            const raw = gptRes.choices[0].message.content?.trim() || '';
+            return {
+                answer: `${raw}\n\n${this.buildOffTopicRedirect()}`,
+                sources: [],
+                found: true,
+                followups: [],
+                context: {
+                    last_topic: context?.lastTopic || '',
+                    last_answer: '',
+                    last_question: question
+                }
+            };
+        } catch (error) {
+            return {
+                answer: this.buildGuidanceAnswer('no_results', context),
+                sources: [],
+                found: false,
+                followups: [],
+                context: {
+                    last_topic: context?.lastTopic || '',
+                    last_answer: '',
+                    last_question: question
+                }
+            };
+        }
+    }
+
+    trySolveMath(question) {
+        const raw = String(question || '').toLowerCase().trim();
+        if (!raw) return null;
+        const cleaned = raw
+            .replace(/^et\s+/i, '')
+            .replace(/^tu\s+connais\s+/i, '')
+            .replace(/^tu\s+sais\s+/i, '')
+            .replace(/combien\s+fait\s+/i, '')
+            .replace(/combien\s+fais\s+/i, '')
+            .replace(/combien\s+faire\s+/i, '')
+            .replace(/combien\s+ça\s+fait\s+/i, '')
+            .replace(/combien\s+cela\s+fait\s+/i, '')
+            .replace(/=?\s*$/g, '')
+            .trim();
+
+        const mathCandidate = /^[0-9+\-*/().\s]+$/.test(cleaned)
+            ? cleaned
+            : (raw.match(/[-+*/()0-9\s]{3,}/)?.[0] || '').trim();
+
+        if (!/[\d]/.test(mathCandidate)) return null;
+        if (!/^[0-9+\-*/().\s]+$/.test(mathCandidate)) return null;
+        if (cleaned.length > 80) return null;
+
+        try {
+            // eslint-disable-next-line no-new-func
+            const result = Function(`"use strict"; return (${mathCandidate});`)();
+            if (typeof result === 'number' && Number.isFinite(result)) {
+                return result;
+            }
+        } catch (error) {
+            return null;
+        }
+        return null;
     }
 
     /**
@@ -469,6 +826,11 @@ export class RAGService {
         if (!trimmed) return trimmed;
 
         const lower = trimmed.toLowerCase();
+        if (lower.includes('veux-tu') || lower.includes('veux tu') || lower.includes('tu veux')) {
+            return this.theme
+                ? `Si tu veux, je peux approfondir sur ${this.theme}.`
+                : 'Si tu veux, je peux approfondir ce point.';
+        }
         if (lower.startsWith('dis-moi')) {
             return trimmed;
         }
@@ -536,7 +898,7 @@ export class RAGService {
      * @returns {string}
      */
     appendOpenEndedLine(answer, followups = []) {
-        const trimmed = String(answer || '').trim();
+        const trimmed = this.stripTrailingQuestion(String(answer || '').trim());
         if (!trimmed) return trimmed;
         const openLine = this.pickOpenEndedLine(followups);
         if (!openLine) return trimmed;
@@ -544,6 +906,28 @@ export class RAGService {
             return trimmed;
         }
         return `${trimmed}\n\n${openLine}`;
+    }
+
+    stripTrailingQuestion(text) {
+        if (!text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        if (sentences.length <= 1) return text;
+
+        const last = sentences[sentences.length - 1].trim();
+        const lower = last.toLowerCase();
+        const isQuestion = last.endsWith('?');
+        const questionStarters = [
+            'dis-moi', 'peux-tu', 'pouvez-vous', 'pourrais-tu', 'pourriez-vous',
+            'est-ce que', 'comment', 'pourquoi', 'où', 'quand', 'quel', 'quelle', 'quels', 'quelles'
+        ];
+        const startsLikeQuestion = questionStarters.some(starter => lower.startsWith(starter));
+
+        if (isQuestion || startsLikeQuestion) {
+            sentences.pop();
+            return sentences.join(' ').trim();
+        }
+
+        return text;
     }
 
     /**
