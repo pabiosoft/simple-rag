@@ -1,5 +1,5 @@
 services:
-  nodeapp:
+  backend:
     build:
       context: ./backend
       dockerfile: ../docker/Dockerfile.prod

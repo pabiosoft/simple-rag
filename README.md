@@ -32,7 +32,7 @@ cd ..
 docker compose up --build
 
 # 3) Indexer (dev)
-docker compose exec nodeapp npm run index:dev
+docker compose exec backend npm run index:dev
 ```
 
 ## Routes utiles
