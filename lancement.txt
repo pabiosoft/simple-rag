@@ -1,4 +1,4 @@
 docker compose up --build         
 # executer au niveau racine# executer au niveau backend 
 # importe les documents présents 
-docker compose exec nodeapp npm run index 
+docker compose exec nodeapp npm run index:dev 

@@ -3,17 +3,13 @@
 /**
  * Script pour surveiller et traiter les nouveaux fichiers PDF
  * Peut être exécuté manuellement ou en arrière-plan
- * executer cette commande dans le dossier backend pour rendre le fichier executable : 
- * chmod +x scripts/watch-pdf.js 
- * puis executer cette commande dans le dossier backend pour surveiller les nouveaux fichiers PDF : ./scripts/watch-pdf.js  
+ * exécuter depuis backend :
+ * npm run watch-pdf:dev
  */
 
 import fs from 'fs';
 import path from 'path';
-import {
-    listPDFFiles,
-    processSpecificPDF
-} from '../services/pdfService.js';
+import { pdfService } from '../services/pdfService.js';
 import { indexerService } from '../services/indexer.js';
 
 const PDF_DIR = path.join(path.resolve('./corpus'), 'pdf');
@@ -46,7 +42,7 @@ async function processNewPDFs() {
         
         await ensureProcessedDir();
         const processedFiles = await getProcessedFiles();
-        const allFiles = await listPDFFiles();
+        const allFiles = await pdfService.listPDFFiles();
         
         const newFiles = allFiles.filter(file => !processedFiles.has(file));
         
@@ -62,7 +58,7 @@ async function processNewPDFs() {
         
         for (const file of newFiles) {
             try {
-                const document = await processSpecificPDF(file);
+                const document = await pdfService.processSpecificPDF(file);
                 documents.push(document);
                 await markAsProcessed(file);
                 console.log(`✅ Traité: ${file}`);

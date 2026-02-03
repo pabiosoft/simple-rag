@@ -29,8 +29,8 @@ cp .env.example .env
 cd ..
 docker compose up --build
 
-# 3) Indexer
-docker compose exec nodeapp npm run index
+# 3) Indexer (dev)
+docker compose exec nodeapp npm run index:dev
 ```
 
 ## Routes utiles
@@ -42,8 +42,8 @@ docker compose exec nodeapp npm run index
 ## Indexation ciblée
 
 ```bash
-# Indexer un sous-dossier PDF
-npm run index 2026-03-02
+# Indexer un sous-dossier PDF (dev)
+npm run index:dev 2026-03-02
 ```
 
 ## .env (exemple)

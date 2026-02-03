@@ -5,9 +5,6 @@ RUN addgroup -g 1001 -S nodejs \
 
 WORKDIR /app
 
-# Dev tools
-RUN npm install -g nodemon
-
 COPY package*.json ./
 RUN npm install && npm cache clean --force
 
