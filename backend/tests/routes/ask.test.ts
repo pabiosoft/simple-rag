@@ -17,7 +17,10 @@ const mockSearchResult = [
 
 describe('POST /ask', () => {
   it('returns greeting response', async () => {
-    const res = await request(app).post('/ask').send({ question: 'bonjour' });
+    const res = await request(app)
+      .post('/ask')
+      .set('x-api-key', 'test-key')
+      .send({ question: 'bonjour' });
     expect(res.status).toBe(200);
     expect(res.body.answer).toContain('Bonjour');
   });
@@ -28,7 +31,10 @@ describe('POST /ask', () => {
       choices: [{ message: { content: JSON.stringify({ answer: 'Réponse', followups: [] }) } }],
     });
 
-    const res = await request(app).post('/ask').send({ question: 'test' });
+    const res = await request(app)
+      .post('/ask')
+      .set('x-api-key', 'test-key')
+      .send({ question: 'test' });
     expect(res.status).toBe(200);
     expect(res.body.sources.length).toBeGreaterThan(0);
   });
