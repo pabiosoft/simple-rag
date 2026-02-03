@@ -4,6 +4,14 @@ const folderTree = document.getElementById('folderTree');
 const selectedFolder = document.getElementById('selectedFolder');
 const indexButton = document.getElementById('indexButton');
 const indexAllButton = document.getElementById('indexAllButton');
+const authModal = document.getElementById('adminAuthModal');
+const loginForm = document.getElementById('adminLoginForm');
+const loginError = document.getElementById('adminLoginError');
+const adminEmail = document.getElementById('adminEmail');
+const adminPassword = document.getElementById('adminPassword');
+const authEnabled = document.body.dataset.adminAuthEnabled === 'true';
+const adminBase = document.body.dataset.adminBase || '/admin';
+let isAuthed = document.body.dataset.adminAuthed === 'true';
 
 function setStatus(message, type = 'info') {
   if (!statusBox) return;
@@ -18,6 +26,13 @@ function setStatus(message, type = 'info') {
 
 function setIndexStatus(message, type = 'info') {
   setStatus(message, type);
+}
+
+function showAuthModal(message = '') {
+  if (!authModal) return;
+  authModal.classList.remove('hidden');
+  authModal.classList.add('flex');
+  if (loginError) loginError.textContent = message || '';
 }
 
 function createTreeNode(node) {
@@ -46,14 +61,25 @@ function createTreeNode(node) {
 
 async function loadFolderTree() {
   if (!folderTree) return;
+  if (authEnabled && !isAuthed) {
+    showAuthModal();
+    folderTree.innerHTML = '<li>Authentification requise</li>';
+    return;
+  }
 
   folderTree.innerHTML = '<li>Chargement...</li>';
 
   try {
-    const response = await fetch('/admin/api/folders?scope=corpus');
+    const response = await fetch(`${adminBase}/api/folders?scope=corpus`, {
+      credentials: 'same-origin',
+    });
     const data = await response.json();
 
     if (!response.ok) {
+      if (response.status === 401) {
+        isAuthed = false;
+        showAuthModal('Session expirée. Connectez-vous.');
+      }
       throw new Error(data?.error || 'Erreur de chargement');
     }
 
@@ -91,12 +117,17 @@ async function triggerIndex(payload) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'same-origin',
       body: JSON.stringify(payload),
     });
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (response.status === 401) {
+        isAuthed = false;
+        showAuthModal('Session expirée. Connectez-vous.');
+      }
       const message = data?.error || 'Erreur lors de l\'indexation.';
       setIndexStatus(message, 'error');
       return;
@@ -141,12 +172,17 @@ form?.addEventListener('submit', async (event) => {
   try {
     const response = await fetch(action, {
       method: 'POST',
+      credentials: 'same-origin',
       body: formData,
     });
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (response.status === 401) {
+        isAuthed = false;
+        showAuthModal('Session expirée. Connectez-vous.');
+      }
       const message = data?.error || 'Erreur lors de l\'upload.';
       setStatus(message, 'error');
       return;
@@ -161,4 +197,41 @@ form?.addEventListener('submit', async (event) => {
   }
 });
 
-loadFolderTree();
+loginForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!adminEmail || !adminPassword) return;
+
+  try {
+    const response = await fetch(`${adminBase}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        email: adminEmail.value.trim().slice(0, 200),
+        password: adminPassword.value.slice(0, 200),
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      showAuthModal(data?.error || 'Identifiants invalides.');
+      return;
+    }
+
+    isAuthed = true;
+    if (authModal) {
+      authModal.classList.add('hidden');
+      authModal.classList.remove('flex');
+    }
+    await loadFolderTree();
+  } catch (error) {
+    showAuthModal('Erreur réseau. Réessayez.');
+  }
+});
+
+if (authEnabled && !isAuthed) {
+  showAuthModal();
+} else {
+  loadFolderTree();
+}

@@ -19,26 +19,34 @@ html(lang="fr")
           div
             h1(class="text-xl font-semibold tracking-tight") Assistant IA - RAG
             p(class="text-xs text-slate-500") Recherche intelligente dans vos documents
-          a(href="/admin" class="text-xs text-slate-400 hover:text-slate-200") Admin >
+          if enableChatUI
+            a(href=adminBase class="text-xs text-slate-400 hover:text-slate-200") Admin >
 
         article(class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden")
-          #messages(class="max-h-[420px] overflow-y-auto space-y-4 p-6")
-            .welcome-message.text-center.text-slate-400
-              i.fas.fa-robot.text-3xl.mb-3.block.text-slate-500
-              p Posez votre question sur l'IA, la gestion de projet ou la ville de Pabios
-              p.text-sm.text-slate-500.mt-2 Vos documents seront analysés pour vous fournir une réponse précise
+          if enableChatUI
+            #messages(class="max-h-[420px] overflow-y-auto space-y-4 p-6")
+              .welcome-message.text-center.text-slate-400
+                i.fas.fa-robot.text-3xl.mb-3.block.text-slate-500
+                p Posez votre question sur l'IA, la gestion de projet ou la ville de Pabios
+                p.text-sm.text-slate-500.mt-2 Vos documents seront analysés pour vous fournir une réponse précise
 
-          .input-area(class="border-t border-slate-800 p-4")
-            .input-container(class="grid grid-cols-[1fr_auto] gap-3 items-center bg-slate-950 border border-slate-800 rounded-xl px-4 py-3")
-              textarea#userInput(
-                class="w-full bg-transparent text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none h-11"
-                placeholder="Tapez votre question..."
-                autocomplete="off"
-                maxlength="500"
-                rows="2"
-              )
-              button#sendBtn(type="button" class="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400")
-                i#sendIcon.fas.fa-paper-plane
-                span#sendText Envoyer
+            .input-area(class="border-t border-slate-800 p-4")
+              .input-container(class="grid grid-cols-[1fr_auto] gap-3 items-center bg-slate-950 border border-slate-800 rounded-xl px-4 py-3")
+                textarea#userInput(
+                  class="w-full bg-transparent text-slate-100 placeholder:text-slate-500 focus:outline-none resize-none h-11"
+                  placeholder="Tapez votre question..."
+                  autocomplete="off"
+                  maxlength="500"
+                  rows="2"
+                )
+                button#sendBtn(type="button" class="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400")
+                  i#sendIcon.fas.fa-paper-plane
+                  span#sendText Envoyer
+          else
+            .p-6.text-slate-400.text-center
+              i.fas.fa-lock.text-3xl.mb-3.block.text-slate-500
+              p Rien par ici pour le moment.
+              p.text-sm.text-slate-500.mt-2 Merci de contacter votre administrateur.
 
-    script(src="/app.js")
+    if enableChatUI
+      script(src="/app.js")

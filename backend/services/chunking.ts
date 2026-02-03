@@ -3,11 +3,13 @@
  * Optimisé pour les embeddings et la recherche RAG
  */
 
+import { appConfig } from '../config/appConfig.js';
+
 class ChunkingService {
-    constructor(chunkSize = process.env.CHUNK_SIZE, overlap = process.env.CHUNK_OVERLAP) {
-        this.chunkSize = chunkSize; // Nombre de tokens par chunk
-        this.overlap = overlap;     // Chevauchement entre les chunks
-        this.MAX_TOKENS_PER_CHUNK = process.env.MAX_TOKENS_PER_CHUNK ; // Limite pour éviter l'erreur
+    constructor(chunkSize = appConfig.chunking.size, overlap = appConfig.chunking.overlap) {
+        this.chunkSize = Number(chunkSize) || 500; // Nombre de tokens par chunk
+        this.overlap = Number(overlap) || 50;     // Chevauchement entre les chunks
+        this.MAX_TOKENS_PER_CHUNK = appConfig.chunking.maxTokens; // Limite pour éviter l'erreur
     }
 
     /**

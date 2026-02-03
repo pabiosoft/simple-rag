@@ -1,4 +1,5 @@
 import { qdrant, COLLECTION_NAME } from '../config/database.js';
+import { appConfig } from '../config/appConfig.js';
 
 /**
  * Service pour les opérations vectorielles avec Qdrant
@@ -25,7 +26,7 @@ export class VectorService {
      * @param {number} scoreThreshold - Seuil de pertinence
      * @returns {Promise<Array>} Résultats de recherche
      */
-    async search(vector, limit = 3, scoreThreshold = 0.75) {
+    async search(vector, limit = 3, scoreThreshold = appConfig.minScore) {
         try {
             const results = await qdrant.search(COLLECTION_NAME, {
                 vector,
@@ -48,10 +49,10 @@ export class VectorService {
     getAdaptiveThreshold(question) {
         const wordCount = question.split(/\s+/).filter(Boolean).length;
 
-        if (wordCount <= 3) return 0.72; // questions très courtes → seuil bas
-        if (wordCount <= 6) return 0.77;
-        if (wordCount <= 12) return 0.80;
-        return 0.82; // cap pour éviter de rater des résultats légers
+        if (wordCount <= 3) return Math.max(0.5, appConfig.minScore - 0.1); // questions très courtes
+        if (wordCount <= 6) return Math.max(0.55, appConfig.minScore - 0.05);
+        if (wordCount <= 12) return appConfig.minScore;
+        return Math.min(0.85, appConfig.minScore + 0.05);
     }
 }
 

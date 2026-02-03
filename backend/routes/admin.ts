@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import { indexerService } from '../services/indexer.js';
+import { createAdminSession, getAdminSessionCookieName, getAdminSessionMaxAge, isAdminAuthConfigured, verifyAdminCredentials } from '../middleware/adminSession.js';
 
 const router = express.Router();
 
@@ -12,7 +13,26 @@ function sanitizeSubdir(value = '') {
   const trimmed = String(value || '').trim();
   if (!trimmed) return '';
   if (trimmed.includes('..')) return '';
+  if (trimmed.length > 200) return '';
   return trimmed.replace(/^\/+|\/+$/g, '');
+}
+
+function hasControlChars(value = '') {
+  return /[\u0000-\u001F\u007F]/.test(value);
+}
+
+function validateAdminLoginInput(email = '', password = '') {
+  const cleanedEmail = String(email || '').trim();
+  const cleanedPassword = String(password || '');
+
+  if (!cleanedEmail || !cleanedPassword) return null;
+  if (cleanedEmail.length > 200 || cleanedPassword.length > 200) return null;
+  if (hasControlChars(cleanedEmail) || hasControlChars(cleanedPassword)) return null;
+
+  return {
+    email: cleanedEmail,
+    password: cleanedPassword,
+  };
 }
 
 async function listSubdirTree(rootDir, baseDir) {
@@ -34,7 +54,7 @@ async function listSubdirTree(rootDir, baseDir) {
   return children;
 }
 
-router.get('/admin/api/folders', async (req, res) => {
+router.get('/api/folders', async (req, res) => {
   const scope = String(req.query.scope || 'corpus').toLowerCase();
 
   try {
@@ -50,11 +70,14 @@ router.get('/admin/api/folders', async (req, res) => {
   }
 });
 
-router.post('/admin/api/index', async (req, res) => {
+router.post('/api/index', async (req, res) => {
   const rawPath = sanitizeSubdir(req.body?.path || req.body?.subdir || '');
   const isFull = Boolean(req.body?.full);
 
   try {
+    if (!isFull && !rawPath) {
+      return res.status(400).json({ error: 'Chemin invalide' });
+    }
     const indexed = await indexerService.indexCorpusFolder(isFull ? '' : rawPath);
     res.json({
       message: 'Indexation lancée',
@@ -67,6 +90,31 @@ router.post('/admin/api/index', async (req, res) => {
     console.error('❌ Erreur indexation admin:', error?.message || error);
     res.status(500).json({ error: error?.message || 'Erreur lors de l\'indexation' });
   }
+});
+
+router.post('/login', (req, res) => {
+  if (!isAdminAuthConfigured()) {
+    return res.status(400).json({ error: 'Authentification admin désactivée' });
+  }
+
+  const validated = validateAdminLoginInput(req.body?.email, req.body?.password);
+  if (!validated) {
+    return res.status(400).json({ error: 'Entrées invalides' });
+  }
+
+  if (!verifyAdminCredentials(validated.email, validated.password)) {
+    return res.status(401).json({ error: 'Identifiants invalides' });
+  }
+
+  const token = createAdminSession();
+  res.cookie(getAdminSessionCookieName(), token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: getAdminSessionMaxAge(),
+  });
+
+  return res.json({ ok: true });
 });
 
 export default router;

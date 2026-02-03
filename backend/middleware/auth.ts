@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { secrets } from '../config/appConfig.js';
 
 let warnedOnce = false;
 
@@ -11,7 +12,7 @@ function safeEqual(a: string, b: string) {
 }
 
 export function apiAuth(req: Request, res: Response, next: NextFunction) {
-  const requiredKey = process.env.API_KEY || '';
+  const requiredKey = secrets.apiKey;
 
   if (!requiredKey) {
     if (!warnedOnce) {
@@ -34,4 +35,17 @@ export function apiAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   return res.status(401).json({ error: 'Unauthorized' });
+}
+
+export function isSameOriginRequest(req: Request) {
+  const origin = req.header('origin');
+  if (!origin) return false;
+
+  const forwardedProto = (req.header('x-forwarded-proto') || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol;
+  const host = req.header('x-forwarded-host') || req.header('host');
+  if (!host) return false;
+
+  const expectedOrigin = `${proto}://${host}`;
+  return origin === expectedOrigin;
 }

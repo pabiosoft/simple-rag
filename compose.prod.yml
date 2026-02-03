@@ -14,6 +14,7 @@ services:
       - NODE_ENV=production
     volumes:
       - corpus_data:/app/corpus
+      - ./backend/config/app.production.yaml:/app/config/app.production.yaml:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8000/ >/dev/null || exit 1"]

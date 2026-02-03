@@ -12,11 +12,12 @@ import { pathToFileURL } from 'url';
 // Import spécifique pour Node.js (version legacy)
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import chunkingService from './chunking.js';
+import { appConfig } from '../config/appConfig.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const PDF_DIR = path.join(CORPUS_DIR, 'pdf');
 const MAX_CHUNK_TOKENS = 5500; 
-const DEFAULT_AUTHOR = process.env.DEFAULT_DOCUMENT_AUTHOR || 'Anonyme';
+const DEFAULT_AUTHOR = appConfig.defaultDocumentAuthor;
 const STANDARD_FONTS_PATH = path.resolve('node_modules/pdfjs-dist/standard_fonts/') + path.sep;
 const STANDARD_FONTS_URL = pathToFileURL(STANDARD_FONTS_PATH).toString();
 
