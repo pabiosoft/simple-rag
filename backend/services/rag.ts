@@ -5,6 +5,7 @@ import chunkingService from './chunking.js';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'yaml';
+import { sanitizeContext, sanitizeUserInput, detectPromptInjection } from './security.js';
 
 /**
  * Service RAG principal - gère le cycle complet de question-réponse
@@ -525,9 +526,14 @@ export class RAGService {
         const profile = this.getPromptProfile();
         const themeLine = this.theme ? `\nTHÉMATIQUE : ${this.theme}` : '';
         const template = profile?.template || '';
+        const safeQuestion = sanitizeUserInput(question);
+        const safeContext = sanitizeContext(context);
+        if (detectPromptInjection(safeQuestion)) {
+            console.warn('⚠️  prompt injection suspect détecté (question utilisateur).');
+        }
         const rendered = template
-            .replace('{{context}}', context || '')
-            .replace('{{question}}', question || '')
+            .replace('{{context}}', safeContext || '')
+            .replace('{{question}}', safeQuestion || '')
             .replace('{{minSentences}}', String(appConfig.answerMinSentences))
             .replace('{{maxSentences}}', String(appConfig.answerMaxSentences))
             .replace('{{theme}}', this.theme || '')
@@ -585,7 +591,9 @@ export class RAGService {
      * Fallback pour les contextes plus courts
      */
     async generateAnswerFallback(question, context) {
-        const prompt = `Contexte: ${context}\n\nQuestion: ${question}\n\nRéponse courte:`;
+        const safeQuestion = sanitizeUserInput(question);
+        const safeContext = sanitizeContext(context);
+        const prompt = `Contexte: ${safeContext}\n\nQuestion: ${safeQuestion}\n\nRéponse courte:`;
         
         const gptRes = await openai.chat.completions.create({
             model: appConfig.chatModelFallback, 
@@ -666,9 +674,13 @@ export class RAGService {
     }
 
     async generateOffTopicAnswer(question, context: ConversationContext = {}) {
+        const safeQuestion = sanitizeUserInput(question);
         const prompt = `Réponds poliment et brièvement à la question suivante (1-2 phrases), puis ajoute une phrase d’orientation vers le domaine principal.
 
-QUESTION : "${question}"
+QUESTION :
+<user_question>
+${safeQuestion}
+</user_question>
 
 RÉPONSE :`;
 

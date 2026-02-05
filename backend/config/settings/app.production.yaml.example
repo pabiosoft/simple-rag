@@ -5,33 +5,27 @@ allowedOrigins:
   - https://example.com
 defaultDocumentAuthor: team
 appTheme: "Immobilier"
-welcomeMessage: "Bonjour ! Posez-moi votre question."
-embeddingModel: text-embedding-3-small
-chatModel: gpt-3.5-turbo-16k
+embeddingModel: text-embedding-3-large
+chatModel: gpt-4o-mini
 chatModelFallback: gpt-3.5-turbo
 chatTemperature: 0.3
 chatMaxTokens: 800
 fallbackTemperature: 0.3
 fallbackMaxTokens: 500
-suggestedTopics:
-  - objectifs et portée
-  - permis et autorisations
-  - responsabilités des acteurs
-  - normes techniques et sécurité
-  - financement et aides
 otherTopicAllowed:
   - math
   - smalltalk
+  - distance
 offTopicRedirectLine: ""
-answerMinSentences: 4
-answerMaxSentences: 8
-assistantMode: strict
-noContextBehavior: guide
-promptProfile: strict
+answerMinSentences: 20
+answerMaxSentences: 25
+assistantMode: hybrid
+noContextBehavior: general
+promptProfile: hybrid
 country: Guinée
 qdrantUrl: http://vectordb:6333
 collectionName: corpus
-vectorSize: 1536
+vectorSize: 3072
 minScore: 0.6
 fallbackScore: 0.45
 chunking:

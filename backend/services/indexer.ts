@@ -249,6 +249,21 @@ class IndexerService {
     async ensureCollection({ purge = false } = {}) {
         try {
             const collection = await qdrant.getCollection(COLLECTION_NAME);
+            const currentSize = collection?.config?.params?.vectors?.size;
+            const expectedSize = appConfig.vectorSize;
+
+            if (currentSize && expectedSize && currentSize !== expectedSize) {
+                console.log(`⚠️ Taille de vecteur incompatible (actuel: ${currentSize}, attendu: ${expectedSize}). Recréation...`);
+                await qdrant.deleteCollection(COLLECTION_NAME);
+                await qdrant.createCollection(COLLECTION_NAME, {
+                    vectors: {
+                        size: expectedSize,
+                        distance: 'Cosine',
+                    },
+                });
+                console.log(`✅ Collection "${COLLECTION_NAME}" recréée (size ${expectedSize})`);
+                return;
+            }
 
             if (purge && collection.points_count > 0) {
                 console.log(`🗑️ Suppression de ${collection.points_count} points existants...`);
@@ -262,7 +277,7 @@ class IndexerService {
             console.log(`📚 Création de la collection "${COLLECTION_NAME}"...`);
             await qdrant.createCollection(COLLECTION_NAME, {
                 vectors: {
-                    size: 1536,
+                    size: appConfig.vectorSize,
                     distance: 'Cosine',
                 },
             });
