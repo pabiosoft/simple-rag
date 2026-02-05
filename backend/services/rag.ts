@@ -81,6 +81,20 @@ export class RAGService {
         if (rewritten.focus) {
             refinedQuestion = `${refinedQuestion}\nFocalise uniquement sur: ${rewritten.focus}. Évite un résumé général.`;
         }
+        // Gestion des salutations
+        if (this.isGreeting(refinedQuestion)) {
+            return {
+                answer: this.buildWelcomeMessage(),
+                sources: [],
+                found: true,
+                followups: [],
+                context: {
+                    last_topic: context?.lastTopic || '',
+                    last_answer: '',
+                    last_question: refinedQuestion
+                }
+            };
+        }
         if (this.isDistanceQuestion(refinedQuestion)) {
             if (!this.isOtherTopicAllowed('distance')) {
                 return {
