@@ -3,8 +3,8 @@ services:
     build:
       context: ./backend
       dockerfile: ../docker/Dockerfile.prod
-    ports:
-      - "${PORT:-8000}:8000"
+    expose:
+      - "8000"
     depends_on:
       vectordb:
         condition: service_healthy
@@ -25,8 +25,8 @@ services:
 
   vectordb:
     image: qdrant/qdrant:latest
-    ports:
-      - "${QDRANT_PORT:-6333}:6333"
+    expose:
+      - "6333"
     volumes:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
