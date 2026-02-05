@@ -2,11 +2,14 @@ themes:
   immobilier:
     welcomeMessage: "Bonjour ! Je suis votre assistant spécialisé en Immobilier. Je connais bien ces sujets :"
     suggestedTopics:
-      - objectifs et portée
-      - permis et autorisations
-      - responsabilités des acteurs
-      - normes techniques et sécurité
-      - financement et aides
+      - code de la construction et de l’habitation
+      - code foncier et domanial
+      - code de l’urbanisme
+      - droits de propriété et servitudes
+      - baux et droits réels immobiliers
+      - procédures d’immatriculation foncière
+      - expropriation et utilité publique
+      - présentation de Monimba
     profiles:
       strict:
         system: |
