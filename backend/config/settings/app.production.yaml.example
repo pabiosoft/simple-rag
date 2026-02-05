@@ -19,9 +19,9 @@ otherTopicAllowed:
 offTopicRedirectLine: ""
 answerMinSentences: 20
 answerMaxSentences: 25
-assistantMode: strict
-noContextBehavior: guide
-promptProfile: strict
+assistantMode: hybrid
+noContextBehavior: general
+promptProfile: hybrid
 country: Guinée
 qdrantUrl: http://vectordb:6333
 collectionName: corpus
