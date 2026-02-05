@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Request } from 'express';
-import { secrets } from '../config/appConfig.js';
+import { secrets } from '../config/runtime/appConfig.js';
 
 const SESSION_COOKIE = 'admin_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;

@@ -40,6 +40,34 @@ docker compose exec backend npm run index:dev
 - `GET /` : Chat
 - `GET /admin` : Admin (upload + indexation)
 - `POST /corpus/upload/universal` : Upload (multipart/form-data)
+- `POST /ask` : Question RAG
+
+## /ask (API)
+
+```bash
+POST /ask
+{
+  "question": "..."
+}
+```
+
+Options (stateless, pour apps externes) :
+
+```json
+{
+  "question": "...",
+  "conversation_id": "uuid",
+  "last_topic": "...",
+  "last_answer": "...",
+  "last_question": "..."
+}
+```
+
+Format brut (debug) :
+
+```
+/ask?row-json=true
+```
 
 ## Indexation ciblée
 
@@ -48,16 +76,22 @@ docker compose exec backend npm run index:dev
 npm run index:dev 2026-03-02
 ```
 
+## Config (KISS)
+
+- `backend/config/settings/` : YAML (app + prompts)
+- `backend/config/runtime/` : code config (chargement + exports)
+
 ## .env (exemple)
 
 ```
 OPENAI_API_KEY=...
-EMBEDDING_MODEL=...
-QDRANT_URL=...
-DEFAULT_DOCUMENT_AUTHOR=...
+API_KEY=...
+ADMIN_EMAIL=...
+ADMIN_PASSWORD=...
+APP_COUNTRY=Guinée
+ASSISTANT_MODE=hybrid
+PROMPT_PROFILE=hybrid
 ALLOWED_ORIGINS=https://example.com
-APP_THEME=immobilier
-WELCOME_MESSAGE=Bonjour ! Je suis votre assistant immobilier. Posez-moi votre question.
 ```
 
 ## Déploiement

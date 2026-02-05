@@ -1,5 +1,5 @@
 import app from './app.js';
-import { appConfig } from './config/appConfig.js';
+import { appConfig } from './config/runtime/appConfig.js';
 
 const PORT = appConfig.port;
 

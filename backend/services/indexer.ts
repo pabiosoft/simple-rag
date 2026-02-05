@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import ExcelJS from 'exceljs';
-import { qdrant, openai, COLLECTION_NAME } from '../config/database.js';
+import { qdrant, openai, COLLECTION_NAME } from '../config/runtime/database.js';
 import { PDFService } from './pdfService.js';
-import { appConfig } from '../config/appConfig.js';
+import { appConfig } from '../config/runtime/appConfig.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const JSON_DIR = path.join(CORPUS_DIR, 'json');

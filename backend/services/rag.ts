@@ -1,7 +1,10 @@
-import { openai } from '../config/database.js';
+import { openai } from '../config/runtime/database.js';
 import { vectorService } from './vector.js';
-import { appConfig } from '../config/appConfig.js';
+import { appConfig } from '../config/runtime/appConfig.js';
 import chunkingService from './chunking.js'; 
+import fs from 'fs';
+import path from 'path';
+import yaml from 'yaml';
 
 /**
  * Service RAG principal - gère le cycle complet de question-réponse
@@ -26,6 +29,7 @@ export class RAGService {
     defaultWelcomeMessage: string;
     theme: string;
     lastTopicHints: string[];
+    promptProfiles: Record<string, { system?: string; template?: string }>;
 
     constructor() {
         this.MAX_CONTEXT_TOKENS = 12000; // Laisser de la marge pour le prompt
@@ -34,6 +38,34 @@ export class RAGService {
         this.defaultWelcomeMessage = "Bonjour ! Je suis votre assistant spécialisé. Posez-moi une question pour démarrer.";
         this.theme = (appConfig.appTheme || '').trim();
         this.lastTopicHints = (appConfig.suggestedTopics || []).filter(Boolean);
+        this.promptProfiles = this.loadPromptProfiles();
+    }
+
+    loadPromptProfiles() {
+        const filePath = path.resolve('config/settings/prompts/system.yaml');
+        if (!fs.existsSync(filePath)) return {};
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const parsed = yaml.parse(raw);
+        return parsed || {};
+    }
+
+    getPromptProfile() {
+        const profileKey = appConfig.promptProfile || appConfig.assistantMode;
+        const themeKey = (appConfig.appTheme || '').trim().toLowerCase();
+        if (themeKey && this.promptProfiles?.themes?.[themeKey]?.profiles?.[profileKey]) {
+            return this.promptProfiles.themes[themeKey].profiles[profileKey];
+        }
+        if (this.promptProfiles?.profiles?.[profileKey]) {
+            return this.promptProfiles.profiles[profileKey];
+        }
+        return null;
+    }
+
+    getThemeConfig() {
+        const themeKey = (appConfig.appTheme || '').trim().toLowerCase();
+        return themeKey && this.promptProfiles?.themes?.[themeKey]
+            ? this.promptProfiles.themes[themeKey]
+            : null;
     }
 
     /**
@@ -145,6 +177,21 @@ export class RAGService {
             }
 
             if (searchResults.length === 0) {
+                if (appConfig.noContextBehavior === 'general' && appConfig.assistantMode === 'hybrid') {
+                    const { answer, followups, raw } = await this.generateAnswer(refinedQuestion, '');
+                    return {
+                        answer,
+                        sources: [],
+                        found: false,
+                        followups,
+                        raw,
+                        context: {
+                            last_topic: context?.lastTopic || '',
+                            last_answer: '',
+                            last_question: refinedQuestion
+                        }
+                    };
+                }
                 return {
                     answer: this.buildGuidanceAnswer('no_results', context),
                     sources: [],
@@ -188,16 +235,18 @@ export class RAGService {
             }
 
             // 6. Génération de la réponse avec modèle adapté
-            const { answer, followups } = await this.generateAnswer(refinedQuestion, contextText);
+            let { answer, followups, raw } = await this.generateAnswer(refinedQuestion, contextText);
 
             // 7. Formatage des sources
             const sources = this.formatSources(filteredResults);
+            answer = this.sanitizeNoAccess(answer, sources);
 
             return {
                 answer,
                 sources,
                 found: true,
                 followups,
+                raw,
                 metadata: {
                     chunksUsed: filteredResults.length,
                     totalTokens: totalTokens
@@ -286,7 +335,9 @@ export class RAGService {
 
     buildGuidanceAnswer(reason = 'general', context: ConversationContext = {}) {
         const theme = this.theme || appConfig.appTheme;
-        const topics = (appConfig.suggestedTopics || []).filter(Boolean);
+        const themeConfig = this.getThemeConfig();
+        const themeTopics = (themeConfig?.suggestedTopics || []).filter(Boolean);
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean).concat(themeTopics);
         const topicLine = topics.length > 0
             ? `Je peux t’aider sur : ${topics.slice(0, 5).join(', ')}.`
             : 'Je peux t’aider sur un résumé, une définition, une obligation, ou une procédure précise.';
@@ -309,10 +360,14 @@ export class RAGService {
 
     buildWelcomeMessage() {
         const theme = this.theme || appConfig.appTheme;
-        const topics = (appConfig.suggestedTopics || []).filter(Boolean);
+        const themeConfig = this.getThemeConfig();
+        const themeTopics = (themeConfig?.suggestedTopics || []).filter(Boolean);
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean).concat(themeTopics);
+        const themeWelcome = themeConfig?.welcomeMessage || '';
         const focusLine = appConfig.welcomeMessage?.trim()
             ? appConfig.welcomeMessage.trim()
-            : (theme
+            : (themeWelcome ? themeWelcome.trim() : '')
+            || (theme
                 ? `Bonjour ! Je suis votre assistant spécialisé en ${theme}.`
                 : 'Bonjour ! Je suis votre assistant spécialisé.');
         const topicLine = topics.length > 0
@@ -430,14 +485,16 @@ export class RAGService {
      */
     async processQuestionWithContext(question, searchResults) {
         const context = this.buildContext(searchResults);
-        const { answer, followups } = await this.generateAnswer(question, context);
+        let { answer, followups, raw } = await this.generateAnswer(question, context);
         const sources = this.formatSources(searchResults);
+        answer = this.sanitizeNoAccess(answer, sources);
         
         return {
             answer,
             sources,
             found: true,
             followups,
+            raw,
             metadata: {
                 chunksUsed: searchResults.length,
                 contextReduced: true
@@ -464,30 +521,23 @@ export class RAGService {
      * @param {string} context - Contexte récupéré
      * @returns {Promise<string>} Réponse générée
      */
+    buildPrompt(question, context) {
+        const profile = this.getPromptProfile();
+        const themeLine = this.theme ? `\nTHÉMATIQUE : ${this.theme}` : '';
+        const template = profile?.template || '';
+        const rendered = template
+            .replace('{{context}}', context || '')
+            .replace('{{question}}', question || '')
+            .replace('{{minSentences}}', String(appConfig.answerMinSentences))
+            .replace('{{maxSentences}}', String(appConfig.answerMaxSentences))
+            .replace('{{theme}}', this.theme || '')
+            .replace('{{themeName}}', this.theme || '')
+            .replace('{{country}}', appConfig.country || '');
+        return `${themeLine}\n${rendered}`.trim();
+    }
+
     async generateAnswer(question, context) {
-        // PROMPT OPTIMISÉ - plus court
-        const themeLine = this.theme ? `\n        THÉMATIQUE : ${this.theme}` : '';
-        const prompt = `Tu es un assistant clair, pédagogique et rigoureux.${themeLine}
-
-        CONTEXTE (extraits de documents) :
-        ${context}
-
-        QUESTION : "${question}"
-
-        INSTRUCTIONS :
-        1. Réponds UNIQUEMENT avec les informations présentes dans le CONTEXTE.
-        2. Explique simplement, comme à une personne qui découvre le sujet.
-        3. Si le CONTEXTE ne suffit pas, dis-le clairement en une phrase (sans inventer).
-        4. Donne une réponse structurée, claire et utile (4 à 8 phrases selon la matière disponible).
-        5. N'ajoute aucune question dans la réponse (pas de phrase interrogative).
-        6. Propose 2 à 3 relances sous forme de propositions d'aide (pas de point d'interrogation).
-        6.1 Ne mentionne pas "document", "documents", "sources", "corpus" ou "dossier".
-        6.2 Si une THÉMATIQUE est fournie, aligne les relances sur cette thématique.
-        6.3 Ton des relances : bienveillant, orienté aide, commence par "Si tu veux," ou "Dis-moi".
-        7. Réponds en JSON strict avec ce format :
-           {"answer":"...","followups":["...","..."]}
-
-        RÉPONSE :`;
+        const prompt = this.buildPrompt(question, context);
 
         try {
             const gptRes = await openai.chat.completions.create({
@@ -495,7 +545,7 @@ export class RAGService {
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'Tu donnes des réponses claires, simples et exactes, uniquement à partir du contexte fourni.' 
+                        content: this.getPromptProfile()?.system || 'Tu donnes des réponses claires, simples et exactes.' 
                     },
                     { role: 'user', content: prompt }
                 ],
@@ -504,19 +554,21 @@ export class RAGService {
             });
 
             const raw = gptRes.choices[0].message.content?.trim() || '';
-            const parsed = this.parseAnswerJson(raw);
+            const parsed = this.parseAnswerJson(raw) || this.extractFollowupsFromText(raw);
 
             if (parsed) {
                 const styledFollowups = this.applyFollowupStyle(parsed.followups);
                 return {
                     answer: this.appendOpenEndedLine(parsed.answer, styledFollowups),
-                    followups: styledFollowups
+                    followups: styledFollowups,
+                    raw
                 };
             }
 
             return {
                 answer: this.appendOpenEndedLine(raw, []),
-                followups: this.getDefaultFollowups()
+                followups: this.getDefaultFollowups(),
+                raw
             };
 
         } catch (error) {
@@ -543,19 +595,21 @@ export class RAGService {
         });
 
         const raw = gptRes.choices[0].message.content?.trim() || '';
-        const parsed = this.parseAnswerJson(raw);
+            const parsed = this.parseAnswerJson(raw) || this.extractFollowupsFromText(raw);
 
         if (parsed) {
             const styledFollowups = this.applyFollowupStyle(parsed.followups);
             return {
                 answer: this.appendOpenEndedLine(parsed.answer, styledFollowups),
-                followups: styledFollowups
+                followups: styledFollowups,
+                raw
             };
         }
 
         return {
             answer: this.appendOpenEndedLine(raw, []),
-            followups: this.getDefaultFollowups()
+            followups: this.getDefaultFollowups(),
+            raw
         };
     }
 
@@ -597,7 +651,9 @@ export class RAGService {
 
     buildOffTopicRedirect() {
         const theme = this.theme || appConfig.appTheme;
-        const topics = (appConfig.suggestedTopics || []).filter(Boolean).slice(0, 4);
+        const themeConfig = this.getThemeConfig();
+        const themeTopics = (themeConfig?.suggestedTopics || []).filter(Boolean);
+        const topics = (appConfig.suggestedTopics || []).filter(Boolean).concat(themeTopics).slice(0, 4);
         const hint = topics.length > 0
             ? `Si tu veux, je peux plutôt t’aider sur ${topics.join(', ')}.`
             : 'Si tu veux, pose-moi une question en lien avec mes documents.';
@@ -736,21 +792,94 @@ RÉPONSE :`;
      */
     parseAnswerJson(text) {
         if (!text) return null;
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}');
-        if (start === -1 || end === -1 || end <= start) return null;
-
-        const jsonText = text.slice(start, end + 1);
+        const jsonText = this.extractJsonObject(text);
+        if (!jsonText) return null;
         try {
             const parsed = JSON.parse(jsonText);
             if (!parsed || typeof parsed !== 'object') return null;
             const answer = String(parsed.answer || '').trim();
             if (!answer) return null;
-            const followups = this.normalizeFollowups(parsed.followups);
+            const followups = this.normalizeFollowups(parsed.followups).map(item => item.split('\n')[0].trim());
             return { answer, followups };
         } catch {
             return null;
         }
+    }
+
+    extractJsonObject(text) {
+        const start = text.indexOf('{');
+        if (start === -1) return null;
+        let depth = 0;
+        for (let i = start; i < text.length; i += 1) {
+            const char = text[i];
+            if (char === '{') depth += 1;
+            if (char === '}') depth -= 1;
+            if (depth === 0) {
+                return text.slice(start, i + 1);
+            }
+        }
+        return null;
+    }
+
+    sanitizeNoAccess(answer, sources = []) {
+        if (!answer) return answer;
+        if (!sources || sources.length === 0) return answer;
+        const patterns = [
+            /je n['’]ai pas accès[^.?!]*[.?!]?/gi,
+            /je n['’]ai pas l['’]information[^.?!]*[.?!]?/gi,
+            /je n['’]ai pas d['’]information[^.?!]*[.?!]?/gi,
+            /je n['’]ai pas cette information[^.?!]*[.?!]?/gi
+        ];
+        let cleaned = answer;
+        patterns.forEach((pattern) => {
+            cleaned = cleaned.replace(pattern, '').trim();
+        });
+        return cleaned.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    /**
+     * Fallback: extrait une réponse + relances depuis du texte libre.
+     */
+    extractFollowupsFromText(text) {
+        if (!text) return null;
+        const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+        if (lines.length === 0) return null;
+
+        const followupPrefixes = [
+            'si tu veux', 'dis-moi', 'on peut', 'je peux', 'si besoin'
+        ];
+
+        const followups = [];
+        const answerParts = [];
+
+        for (const line of lines) {
+            const lower = line.toLowerCase();
+            const isMarkdownLine = /^#{1,6}\s/.test(line)
+                || /^[-*+]\s+/.test(line)
+                || /^\d+\.\s+/.test(line)
+                || /^>\s+/.test(line);
+
+            if (followupPrefixes.some(prefix => lower.startsWith(prefix))) {
+                // Only treat as followup if it's not a markdown heading/list/quote
+                if (!isMarkdownLine) {
+                    followups.push(line.replace(/[?？]\s*$/u, '').trim());
+                    continue;
+                }
+            }
+            if (isMarkdownLine && followupPrefixes.some(prefix => lower.startsWith(prefix))) {
+                answerParts.push(line);
+            } else {
+                answerParts.push(line);
+            }
+        }
+
+        const answer = answerParts.join(' ').trim();
+        if (!answer) return null;
+
+        return {
+            answer,
+            followups: this.normalizeFollowups(followups)
+        };
     }
 
     /**
