@@ -23,6 +23,9 @@ Optional stateless context (recommended for multi-app usage):
 - last_topic: string
 - last_answer: string
 - last_question: string
+
+Optional format:
+- row-json=true (query or body) to return the raw model output
 Content-Type: application/json
 
 Body:

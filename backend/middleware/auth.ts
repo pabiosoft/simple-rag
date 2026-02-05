@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
-import { secrets } from '../config/appConfig.js';
+import { secrets } from '../config/runtime/appConfig.js';
 
 let warnedOnce = false;
 

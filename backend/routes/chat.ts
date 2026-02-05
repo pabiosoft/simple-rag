@@ -8,7 +8,12 @@ const router = express.Router();
  */
 router.post('/ask', async (req, res) => {
     try {
-        const { question, conversation_id, last_topic, last_answer, last_question } = req.body || {};
+        const { question, conversation_id, last_topic, last_answer, last_question, raw, row_json } = req.body || {};
+        const rawFlag = raw === true || raw === 'true'
+          || row_json === true || row_json === 'true'
+          || req.query.raw === 'true'
+          || req.query['row-json'] === 'true'
+          || req.query.format === 'raw';
 
         // Validation
         if (!question || typeof question !== 'string' || question.length > 1000) {
@@ -26,7 +31,9 @@ router.post('/ask', async (req, res) => {
 
         // Traitement avec le service RAG
         const result = await ragService.processQuestion(question, context);
-        
+        if (rawFlag) {
+            return res.json({ raw: result.raw || result.answer });
+        }
         res.json(result);
 
     } catch (error) {

@@ -17,6 +17,21 @@ let lastTopic = '';
 let lastAnswer = '';
 let lastQuestion = '';
 
+function renderMarkdown(text) {
+    if (!text) return '';
+    if (window.marked && window.DOMPurify) {
+        const html = window.marked.parse(text, { breaks: true });
+        return window.DOMPurify.sanitize(html);
+    }
+    return text.replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[ch]));
+}
+
 /**
  * Affiche l'indicateur de frappe de l'IA
  */
@@ -139,7 +154,7 @@ function addAIResponse(data) {
             <div class="max-w-[80%] rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100">
                 <div class="flex items-start gap-2">
                     <i class="fas fa-robot text-slate-400"></i>
-                    <div class="leading-relaxed">${data.answer}</div>
+                    <div class="leading-relaxed">${renderMarkdown(data.answer)}</div>
                 </div>
             </div>
     `;

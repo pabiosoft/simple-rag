@@ -1,5 +1,5 @@
-import { qdrant, COLLECTION_NAME } from '../config/database.js';
-import { appConfig } from '../config/appConfig.js';
+import { qdrant, COLLECTION_NAME } from '../config/runtime/database.js';
+import { appConfig } from '../config/runtime/appConfig.js';
 
 /**
  * Service pour les opérations vectorielles avec Qdrant

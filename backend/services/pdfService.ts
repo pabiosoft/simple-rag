@@ -12,7 +12,7 @@ import { pathToFileURL } from 'url';
 // Import spécifique pour Node.js (version legacy)
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import chunkingService from './chunking.js';
-import { appConfig } from '../config/appConfig.js';
+import { appConfig } from '../config/runtime/appConfig.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const PDF_DIR = path.join(CORPUS_DIR, 'pdf');

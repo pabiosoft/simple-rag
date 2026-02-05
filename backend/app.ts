@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import { appConfig, secrets } from './config/appConfig.js';
+import { appConfig, secrets } from './config/runtime/appConfig.js';
 
 // Services
 import { vectorService } from './services/vector.js';

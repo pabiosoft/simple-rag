@@ -31,7 +31,7 @@ dist/
 build/
 
 # Config overrides (prod)
-backend/config/app.production.yaml
+backend/config/settings/app.production.yaml
 
 # Corpus (ne versionner que les exemples et dossiers)
 backend/corpus/*

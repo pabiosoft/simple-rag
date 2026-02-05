@@ -3,7 +3,7 @@
  * Optimisé pour les embeddings et la recherche RAG
  */
 
-import { appConfig } from '../config/appConfig.js';
+import { appConfig } from '../config/runtime/appConfig.js';
 
 class ChunkingService {
     constructor(chunkSize = appConfig.chunking.size, overlap = appConfig.chunking.overlap) {

@@ -1,0 +1,35 @@
+port: 8000
+adminPath: /admin
+enableChatUI: true
+allowedOrigins:
+  - http://localhost:3001
+  - http://localhost:8000
+defaultDocumentAuthor: team_interne
+appTheme: "Immobilier"
+embeddingModel: text-embedding-3-small
+chatModel: gpt-4o-mini
+chatModelFallback: gpt-4o-mini
+chatTemperature: 0.3
+chatMaxTokens: 800
+fallbackTemperature: 0.3
+fallbackMaxTokens: 500
+otherTopicAllowed:
+  - math
+  - smalltalk
+  - distance
+offTopicRedirectLine: ""
+answerMinSentences: 20
+answerMaxSentences: 25
+assistantMode: hybrid
+noContextBehavior: general
+promptProfile: hybrid
+country: Guinée
+qdrantUrl: http://vectordb:6333
+collectionName: corpus
+vectorSize: 1536
+minScore: 0.6
+fallbackScore: 0.45
+chunking:
+  size: 500
+  overlap: 50
+  maxTokens: 1500
