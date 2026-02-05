@@ -203,7 +203,7 @@ loginForm?.addEventListener('submit', async (event) => {
   if (!adminEmail || !adminPassword) return;
 
   try {
-    const response = await fetch(`${adminUiBase}/login`, {
+    const response = await fetch(`${adminBase}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',

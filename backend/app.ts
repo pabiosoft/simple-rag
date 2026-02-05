@@ -112,7 +112,7 @@ app.use(`${adminBase}/api`, (req, res, next) => {
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
-app.use(adminUiBase, adminRoutes);
+app.use(adminBase, adminRoutes);
 
 // 404
 app.use((req, res) => {
