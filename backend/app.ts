@@ -21,6 +21,7 @@ const appRoot = path.resolve();
 // Utiliser le PORT depuis .env avec fallback
 const PORT = appConfig.port;
 const adminBase = appConfig.adminPath;
+const adminUiBase = appConfig.adminUiPath || adminBase;
 const enableChatUI = appConfig.enableChatUI;
 
 // Vérification des variables d'environnement
@@ -77,12 +78,13 @@ app.get('/', (_, res) => {
     res.render('index', { adminBase, enableChatUI });
 });
 
-app.get(adminBase, (req, res) => {
+app.get(adminUiBase, (req, res) => {
     const adminAuthEnabled = isAdminAuthConfigured();
     res.render('admin', {
         adminAuthEnabled,
         adminAuthed: adminAuthEnabled ? isAdminSessionValid(req) : true,
         adminBase,
+        adminUiBase,
     });
 });
 
@@ -110,11 +112,11 @@ app.use(`${adminBase}/api`, (req, res, next) => {
 app.use('/', chatRoutes);
 app.use('/', corpusRoutes);
 app.use('/', pdfRoutes);
-app.use(adminBase, adminRoutes);
+app.use(adminUiBase, adminRoutes);
 
 // 404
 app.use((req, res) => {
-    res.status(404).render('404', { adminBase });
+    res.status(404).render('404', { adminBase: adminUiBase });
 });
 
 // Démarrage du serveur

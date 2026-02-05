@@ -1,5 +1,6 @@
 port: 8000
 adminPath: /admin
+adminUiPath: /admin
 enableChatUI: true
 allowedOrigins:
   - http://localhost:3001

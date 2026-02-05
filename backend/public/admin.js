@@ -11,6 +11,7 @@ const adminEmail = document.getElementById('adminEmail');
 const adminPassword = document.getElementById('adminPassword');
 const authEnabled = document.body.dataset.adminAuthEnabled === 'true';
 const adminBase = document.body.dataset.adminBase || '/admin';
+const adminUiBase = document.body.dataset.adminUiBase || adminBase;
 let isAuthed = document.body.dataset.adminAuthed === 'true';
 
 function setStatus(message, type = 'info') {
@@ -112,7 +113,7 @@ async function triggerIndex(payload) {
   setIndexStatus('Indexation en cours...', 'info');
 
   try {
-    const response = await fetch('/admin/api/index', {
+    const response = await fetch(`${adminBase}/api/index`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 port: 8000
-adminPath: /admin-xxxxx
+adminPath: /admin
+adminUiPath: /admin-xxxxx
 enableChatUI: false
 allowedOrigins:
   - https://example.com
