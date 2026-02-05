@@ -16,7 +16,6 @@ fallbackTemperature: 0.3
 fallbackMaxTokens: 500
 otherTopicAllowed:
   - math
-  - smalltalk
   - distance
 offTopicRedirectLine: ""
 answerMinSentences: 20
