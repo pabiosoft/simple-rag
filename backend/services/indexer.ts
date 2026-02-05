@@ -67,12 +67,14 @@ function extractTags(row, fallback = []) {
     return fallback;
 }
 
+type AppError = Error & { statusCode?: number };
+
 function buildJsonDocumentFromFile(filePath, fileName) {
     const rawData = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(rawData);
+    const doc = JSON.parse(rawData) as Record<string, unknown>;
 
     if (!doc.text || typeof doc.text !== 'string' || !doc.text.trim()) {
-        const error = new Error(`Champ "text" manquant ou vide dans ${fileName}`);
+        const error: AppError = new Error(`Champ "text" manquant ou vide dans ${fileName}`);
         error.statusCode = 400;
         throw error;
     }
@@ -144,7 +146,7 @@ function buildExcelDocument(row, context) {
     };
 }
 
-function normalizeMetadataEntry(entry = {}) {
+function normalizeMetadataEntry(entry: Record<string, any> = {}) {
     return {
         title: entry.title ? normalizeValue(entry.title) : '',
         author: entry.author ? normalizeValue(entry.author) : '',
@@ -154,8 +156,8 @@ function normalizeMetadataEntry(entry = {}) {
     };
 }
 
-function normalizeMetadataMap(map = {}) {
-    const result = {};
+function normalizeMetadataMap(map: Record<string, any> = {}) {
+    const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(map)) {
         if (value && typeof value === 'object') {
             result[key] = normalizeMetadataEntry(value);
@@ -425,7 +427,8 @@ class IndexerService {
         workbook.worksheets.forEach(worksheet => {
             const sheetName = worksheet.name;
             const headerRow = worksheet.getRow(1);
-            const headers = (headerRow.values || []).slice(1).map(value =>
+            const values = Array.isArray(headerRow.values) ? headerRow.values : [];
+            const headers = values.slice(1).map(value =>
                 value ? String(value).trim() : ''
             );
 
@@ -692,14 +695,14 @@ class IndexerService {
     async indexExcelFile(fileName) {
         const extension = path.extname(fileName).toLowerCase();
         if (!SUPPORTED_EXCEL_EXTENSIONS.has(extension)) {
-            const error = new Error('Format de fichier non supporté');
+            const error: AppError = new Error('Format de fichier non supporté');
             error.statusCode = 400;
             throw error;
         }
 
         const filePath = path.join(EXCEL_DIR, fileName);
         if (!fs.existsSync(filePath)) {
-            const error = new Error('Fichier introuvable dans corpus/excel');
+            const error: AppError = new Error('Fichier introuvable dans corpus/excel');
             error.statusCode = 404;
             throw error;
         }

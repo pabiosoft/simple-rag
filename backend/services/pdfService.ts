@@ -78,7 +78,7 @@ export class PDFService {
 
                     // Concaténer les éléments de texte de la page
                     const pageText = textContent.items
-                        .map(item => item.str)
+                        .map(item => ('str' in item ? item.str : ''))
                         .join(' ');
 
                     fullText += pageText + '\n';
