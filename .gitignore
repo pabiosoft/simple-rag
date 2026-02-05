@@ -13,6 +13,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.test
 
 # Logs
 logs/
@@ -29,6 +30,8 @@ Thumbs.db
 # Build
 dist/
 build/
+*.sqlite
+*.db
 
 # Config overrides (prod)
 backend/config/settings/app.production.yaml
