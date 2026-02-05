@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import { qdrant, openai, COLLECTION_NAME } from '../config/runtime/database.js';
 import { PDFService } from './pdfService.js';
 import { appConfig } from '../config/runtime/appConfig.js';
+import chunkingService from './chunking.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const JSON_DIR = path.join(CORPUS_DIR, 'json');
@@ -12,6 +13,18 @@ const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
 const DEFAULT_AUTHOR = appConfig.defaultDocumentAuthor;
+const EMBEDDING_MAX_TOKENS = appConfig.chunking.maxTokens;
+
+function truncateForEmbedding(text = '') {
+    const raw = typeof text === 'string' ? text : String(text || '');
+    const estimated = chunkingService.estimateTokens(raw);
+    if (estimated <= EMBEDDING_MAX_TOKENS) {
+        return raw;
+    }
+    const maxChars = EMBEDDING_MAX_TOKENS * 4;
+    console.warn(`⚠️  Chunk trop long (${estimated} tokens), troncature avant embedding...`);
+    return raw.slice(0, maxChars);
+}
 
 function normalizeValue(value) {
     if (value === undefined || value === null) {
@@ -524,9 +537,10 @@ class IndexerService {
                 
                 console.log(`🔄 Indexation de ${source}...`);
 
+                const safeText = truncateForEmbedding(doc.text || '');
                 const embedding = await openai.embeddings.create({
                     model: appConfig.embeddingModel, 
-                    input: doc.text,
+                    input: safeText,
                 });
 
                 const vector = embedding.data[0].embedding;
@@ -536,7 +550,7 @@ class IndexerService {
                     id,
                     vector,
                     payload: {
-                        text: doc.text,
+                        text: safeText,
                         title: doc.title,
                         author: doc.author,
                         date: doc.date,
