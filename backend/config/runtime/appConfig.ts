@@ -15,6 +15,7 @@ type ChunkingConfig = {
 type AppConfig = {
   port: number;
   adminPath: string;
+  adminUiPath: string;
   enableChatUI: boolean;
   allowedOrigins: string[];
   defaultDocumentAuthor: string;
@@ -47,6 +48,7 @@ type AppConfig = {
 type RawConfig = Partial<{
   port: number;
   adminPath: string;
+  adminUiPath: string;
   enableChatUI: boolean;
   allowedOrigins: string[];
   defaultDocumentAuthor: string;
@@ -122,6 +124,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 const appConfig: AppConfig = {
   port: Number(process.env.PORT || rawConfig.port || 8000),
   adminPath: normalizePath(process.env.ADMIN_PATH || rawConfig.adminPath || '/admin'),
+  adminUiPath: normalizePath(process.env.ADMIN_UI_PATH || rawConfig.adminUiPath || rawConfig.adminPath || '/admin'),
   enableChatUI: parseBoolean(process.env.ENABLE_CHAT_UI ?? rawConfig.enableChatUI, true),
   allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : rawConfig.allowedOrigins || [],
   defaultDocumentAuthor: process.env.DEFAULT_DOCUMENT_AUTHOR || rawConfig.defaultDocumentAuthor || 'Anonyme',

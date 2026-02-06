@@ -3,8 +3,8 @@ services:
     build:
       context: ./backend
       dockerfile: ../docker/Dockerfile.prod
-    ports:
-      - "${PORT:-8000}:8000"
+    expose:
+      - "8000"
     depends_on:
       vectordb:
         condition: service_healthy
@@ -14,7 +14,6 @@ services:
       - NODE_ENV=production
     volumes:
       - corpus_data:/app/corpus
-      - ./backend/config/settings/app.production.yaml:/app/config/settings/app.production.yaml:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8000/ >/dev/null || exit 1"]
@@ -25,8 +24,8 @@ services:
 
   vectordb:
     image: qdrant/qdrant:latest
-    ports:
-      - "${QDRANT_PORT:-6333}:6333"
+    expose:
+      - "6333"
     volumes:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped

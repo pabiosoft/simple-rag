@@ -6,6 +6,10 @@
 import { appConfig } from '../config/runtime/appConfig.js';
 
 class ChunkingService {
+    chunkSize: number;
+    overlap: number;
+    MAX_TOKENS_PER_CHUNK: number;
+
     constructor(chunkSize = appConfig.chunking.size, overlap = appConfig.chunking.overlap) {
         this.chunkSize = Number(chunkSize) || 500; // Nombre de tokens par chunk
         this.overlap = Number(overlap) || 50;     // Chevauchement entre les chunks

@@ -95,24 +95,6 @@ export class RAGService {
                 }
             };
         }
-
-        if (this.isSmallTalk(refinedQuestion)) {
-            if (!this.isOtherTopicAllowed('smalltalk')) {
-                return {
-                    answer: this.buildGuidanceAnswer('no_results', context),
-                    sources: [],
-                    found: false,
-                    followups: [],
-                    context: {
-                        last_topic: context?.lastTopic || '',
-                        last_answer: '',
-                        last_question: refinedQuestion
-                    }
-                };
-            }
-            return this.generateOffTopicAnswer(refinedQuestion, context);
-        }
-
         if (this.isDistanceQuestion(refinedQuestion)) {
             if (!this.isOtherTopicAllowed('distance')) {
                 return {

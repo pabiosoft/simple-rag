@@ -35,7 +35,8 @@ router.post('/ask', async (req, res) => {
         // Traitement avec le service RAG
         const result = await ragService.processQuestion(question, context);
         if (rawFlag) {
-            const payload: { raw: string; sources?: unknown } = { raw: result.raw || result.answer };
+            const rawValue = (result as { raw?: string }).raw;
+            const payload: { raw: string; sources?: unknown } = { raw: rawValue || result.answer };
             if (includeSources) payload.sources = result.sources || [];
             return res.json(payload);
         }

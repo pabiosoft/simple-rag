@@ -16,10 +16,12 @@ import { isAdminAuthConfigured, isAdminSessionValid } from './middleware/adminSe
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const appRoot = path.resolve();
 
 // Utiliser le PORT depuis .env avec fallback
 const PORT = appConfig.port;
 const adminBase = appConfig.adminPath;
+const adminUiBase = appConfig.adminUiPath || adminBase;
 const enableChatUI = appConfig.enableChatUI;
 
 // Vérification des variables d'environnement
@@ -66,22 +68,23 @@ checkConnections();
 
 // Middlewares
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/corpus/excel', express.static(path.join(__dirname, 'corpus', 'excel')));
+app.use(express.static(path.join(appRoot, 'public')));
+app.use('/corpus/excel', express.static(path.join(appRoot, 'corpus', 'excel')));
 app.set('view engine', 'pug');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(appRoot, 'views'));
 
 // Routes
 app.get('/', (_, res) => {
     res.render('index', { adminBase, enableChatUI });
 });
 
-app.get(adminBase, (req, res) => {
+app.get(adminUiBase, (req, res) => {
     const adminAuthEnabled = isAdminAuthConfigured();
     res.render('admin', {
         adminAuthEnabled,
         adminAuthed: adminAuthEnabled ? isAdminSessionValid(req) : true,
         adminBase,
+        adminUiBase,
     });
 });
 
@@ -113,7 +116,7 @@ app.use(adminBase, adminRoutes);
 
 // 404
 app.use((req, res) => {
-    res.status(404).render('404', { adminBase });
+    res.status(404).render('404', { adminBase: adminUiBase, enableChatUI });
 });
 
 // Démarrage du serveur

@@ -1,5 +1,6 @@
 port: 8000
-adminPath: /admin-xxxxx
+adminPath: /admin
+adminUiPath: /admin-xxxxx
 enableChatUI: false
 allowedOrigins:
   - https://example.com
@@ -14,14 +15,13 @@ fallbackTemperature: 0.3
 fallbackMaxTokens: 500
 otherTopicAllowed:
   - math
-  - smalltalk
   - distance
 offTopicRedirectLine: ""
 answerMinSentences: 20
 answerMaxSentences: 25
-assistantMode: hybrid
-noContextBehavior: general
-promptProfile: hybrid
+assistantMode: strict
+noContextBehavior: guide
+promptProfile: strict
 country: Guinée
 qdrantUrl: http://vectordb:6333
 collectionName: corpus

@@ -1,5 +1,6 @@
 port: 8000
 adminPath: /admin
+adminUiPath: /admin
 enableChatUI: true
 allowedOrigins:
   - http://localhost:3001
@@ -15,7 +16,6 @@ fallbackTemperature: 0.3
 fallbackMaxTokens: 500
 otherTopicAllowed:
   - math
-  - smalltalk
   - distance
 offTopicRedirectLine: ""
 answerMinSentences: 20

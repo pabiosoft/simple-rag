@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import { qdrant, openai, COLLECTION_NAME } from '../config/runtime/database.js';
 import { PDFService } from './pdfService.js';
 import { appConfig } from '../config/runtime/appConfig.js';
+import chunkingService from './chunking.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const JSON_DIR = path.join(CORPUS_DIR, 'json');
@@ -12,6 +13,18 @@ const EXCEL_DIR = path.join(CORPUS_DIR, 'excel');
 const EXCEL_SPEC_FILE = path.join(EXCEL_DIR, 'spec-owner.json');
 const SUPPORTED_EXCEL_EXTENSIONS = new Set(['.xlsx', '.xls']);
 const DEFAULT_AUTHOR = appConfig.defaultDocumentAuthor;
+const EMBEDDING_MAX_TOKENS = appConfig.chunking.maxTokens;
+
+function truncateForEmbedding(text = '') {
+    const raw = typeof text === 'string' ? text : String(text || '');
+    const estimated = chunkingService.estimateTokens(raw);
+    if (estimated <= EMBEDDING_MAX_TOKENS) {
+        return raw;
+    }
+    const maxChars = EMBEDDING_MAX_TOKENS * 4;
+    console.warn(`⚠️  Chunk trop long (${estimated} tokens), troncature avant embedding...`);
+    return raw.slice(0, maxChars);
+}
 
 function normalizeValue(value) {
     if (value === undefined || value === null) {
@@ -67,12 +80,14 @@ function extractTags(row, fallback = []) {
     return fallback;
 }
 
+type AppError = Error & { statusCode?: number };
+
 function buildJsonDocumentFromFile(filePath, fileName) {
     const rawData = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(rawData);
+    const doc = JSON.parse(rawData) as Record<string, unknown>;
 
     if (!doc.text || typeof doc.text !== 'string' || !doc.text.trim()) {
-        const error = new Error(`Champ "text" manquant ou vide dans ${fileName}`);
+        const error: AppError = new Error(`Champ "text" manquant ou vide dans ${fileName}`);
         error.statusCode = 400;
         throw error;
     }
@@ -144,7 +159,7 @@ function buildExcelDocument(row, context) {
     };
 }
 
-function normalizeMetadataEntry(entry = {}) {
+function normalizeMetadataEntry(entry: Record<string, any> = {}) {
     return {
         title: entry.title ? normalizeValue(entry.title) : '',
         author: entry.author ? normalizeValue(entry.author) : '',
@@ -154,8 +169,8 @@ function normalizeMetadataEntry(entry = {}) {
     };
 }
 
-function normalizeMetadataMap(map = {}) {
-    const result = {};
+function normalizeMetadataMap(map: Record<string, any> = {}) {
+    const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(map)) {
         if (value && typeof value === 'object') {
             result[key] = normalizeMetadataEntry(value);
@@ -425,7 +440,8 @@ class IndexerService {
         workbook.worksheets.forEach(worksheet => {
             const sheetName = worksheet.name;
             const headerRow = worksheet.getRow(1);
-            const headers = (headerRow.values || []).slice(1).map(value =>
+            const values = Array.isArray(headerRow.values) ? headerRow.values : [];
+            const headers = values.slice(1).map(value =>
                 value ? String(value).trim() : ''
             );
 
@@ -521,9 +537,10 @@ class IndexerService {
                 
                 console.log(`🔄 Indexation de ${source}...`);
 
+                const safeText = truncateForEmbedding(doc.text || '');
                 const embedding = await openai.embeddings.create({
                     model: appConfig.embeddingModel, 
-                    input: doc.text,
+                    input: safeText,
                 });
 
                 const vector = embedding.data[0].embedding;
@@ -533,7 +550,7 @@ class IndexerService {
                     id,
                     vector,
                     payload: {
-                        text: doc.text,
+                        text: safeText,
                         title: doc.title,
                         author: doc.author,
                         date: doc.date,
@@ -692,14 +709,14 @@ class IndexerService {
     async indexExcelFile(fileName) {
         const extension = path.extname(fileName).toLowerCase();
         if (!SUPPORTED_EXCEL_EXTENSIONS.has(extension)) {
-            const error = new Error('Format de fichier non supporté');
+            const error: AppError = new Error('Format de fichier non supporté');
             error.statusCode = 400;
             throw error;
         }
 
         const filePath = path.join(EXCEL_DIR, fileName);
         if (!fs.existsSync(filePath)) {
-            const error = new Error('Fichier introuvable dans corpus/excel');
+            const error: AppError = new Error('Fichier introuvable dans corpus/excel');
             error.statusCode = 404;
             throw error;
         }

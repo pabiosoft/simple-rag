@@ -16,7 +16,7 @@ import { appConfig } from '../config/runtime/appConfig.js';
 
 const CORPUS_DIR = path.resolve('./corpus');
 const PDF_DIR = path.join(CORPUS_DIR, 'pdf');
-const MAX_CHUNK_TOKENS = 5500; 
+const MAX_CHUNK_TOKENS = appConfig.chunking.maxTokens; 
 const DEFAULT_AUTHOR = appConfig.defaultDocumentAuthor;
 const STANDARD_FONTS_PATH = path.resolve('node_modules/pdfjs-dist/standard_fonts/') + path.sep;
 const STANDARD_FONTS_URL = pathToFileURL(STANDARD_FONTS_PATH).toString();
@@ -78,7 +78,7 @@ export class PDFService {
 
                     // Concaténer les éléments de texte de la page
                     const pageText = textContent.items
-                        .map(item => item.str)
+                        .map(item => ('str' in item ? item.str : ''))
                         .join(' ');
 
                     fullText += pageText + '\n';

@@ -6,6 +6,9 @@ const IMAGE_DIR = path.resolve('./corpus/images');
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp']);
 
 class OCRService {
+    imageDir: string;
+    worker: any;
+
     constructor() {
         this.imageDir = IMAGE_DIR;
         this.worker = null;
